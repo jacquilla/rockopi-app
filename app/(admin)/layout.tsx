@@ -1,79 +1,114 @@
-import {
-  Package,
-  ArrowDownUp,
-  History,
-  LayoutDashboard,
-  Wallet,
-} from "lucide-react";
+"use client";
 
-export default function AdminLayout({
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Package,
+  ArrowLeftRight,
+  History,
+  BookOpen,
+} from "lucide-react";
+import "../globals.css"; // Pastikan path CSS ini sesuai dengan struktur Anda
+
+const menuItems = [
+  { name: "Dashboard", path: "/", icon: LayoutDashboard },
+  { name: "Master Produk", path: "#", icon: Package }, // Ganti '#' dengan path asli Anda jika ada
+  { name: "In/Out Stok", path: "/transactions", icon: ArrowLeftRight },
+  { name: "Riwayat", path: "/logs", icon: History },
+  { name: "Pembukuan", path: "/finance", icon: BookOpen },
+];
+
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
+  // Menyembunyikan navigasi jika sedang berada di halaman order pelanggan
+  const isCustomerPage = pathname === "/order";
+
   return (
-    // Memasang background utama Rockopi
-    <div className="flex min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center">
-      {/* SIDEBAR ADMIN - Efek Kaca Gelap (Dark Frosted Glass) */}
-      <aside className="w-64 bg-black/80 backdrop-blur-xl text-white flex flex-col shadow-[5px_0_25px_rgba(0,0,0,0.5)] z-10 border-r border-white/10">
-        <div className="p-6 border-b border-white/10 flex flex-col items-center text-center">
-          <img
-            src="/logo.png"
-            alt="Logo Rockopi"
-            className="w-32 object-contain mb-2 drop-shadow-lg"
-          />
-          <p className="text-xs text-gray-300 mt-1 font-medium tracking-widest uppercase">
-            Warehouse
-          </p>
+    <html lang="en">
+      <body className="bg-gray-50">
+        <div className="flex h-screen overflow-hidden">
+          {/* --- SIDEBAR DESKTOP (Disembunyikan di Layar HP) --- */}
+          {!isCustomerPage && (
+            <aside className="hidden md:flex flex-col w-64 bg-[#0a150f] text-white border-r border-gray-800 transition-all">
+              <div className="p-6 border-b border-gray-800 flex flex-col items-center justify-center">
+                <h1 className="text-3xl font-black tracking-widest uppercase">
+                  ROCKOPI
+                </h1>
+                <p className="text-xs tracking-widest text-gray-400 mt-1">
+                  WAREHOUSE
+                </p>
+              </div>
+              <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
+                {menuItems.map((item) => {
+                  const isActive = pathname === item.path;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.path}
+                      className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
+                        isActive
+                          ? "bg-[#1B4332] text-white font-bold"
+                          : "text-gray-400 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <Icon size={20} />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </aside>
+          )}
+
+          {/* --- KONTEN UTAMA --- */}
+          {/* Tambahkan pb-20 (padding bottom) khusus di HP agar konten tidak tertutup menu bawah */}
+          <main
+            className={`flex-1 overflow-y-auto ${!isCustomerPage ? "pb-20 md:pb-0" : ""}`}
+          >
+            {children}
+          </main>
+
+          {/* --- FLOATING BOTTOM NAVIGATION (Hanya Muncul di Layar HP) --- */}
+          {!isCustomerPage && (
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0a150f] text-gray-400 border-t border-gray-800 z-50 flex justify-around items-center h-16 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.2)]">
+              {menuItems.map((item) => {
+                const isActive = pathname === item.path;
+                const Icon = item.icon;
+
+                // Menyingkat teks untuk mobile agar tidak bertabrakan
+                let shortName = item.name;
+                if (item.name === "Master Produk") shortName = "Produk";
+                if (item.name === "In/Out Stok") shortName = "Stok";
+
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.path}
+                    className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
+                      isActive
+                        ? "text-green-400"
+                        : "hover:text-gray-200 active:text-white"
+                    }`}
+                  >
+                    <Icon
+                      size={20}
+                      className={isActive ? "animate-bounce-short" : ""}
+                    />
+                    <span className="text-[10px] font-bold">{shortName}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
         </div>
-
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          <a
-            href="/"
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all duration-300 hover:translate-x-1"
-          >
-            <LayoutDashboard size={20} /> Dashboard
-          </a>
-          <a
-            href="/products"
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all duration-300 hover:translate-x-1"
-          >
-            <Package size={20} /> Master Produk
-          </a>
-          <a
-            href="/transactions"
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all duration-300 hover:translate-x-1"
-          >
-            <ArrowDownUp size={20} /> In/Out Stok
-          </a>
-          <a
-            href="/logs"
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all duration-300 hover:translate-x-1"
-          >
-            <History size={20} /> Riwayat
-          </a>
-          <a
-            href="/finance"
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-all duration-300 hover:translate-x-1"
-          >
-            <Wallet size={20} /> Pembukuan
-          </a>
-        </nav>
-
-        <div className="p-6 border-t border-white/10 flex flex-col items-center justify-center opacity-90 hover:opacity-100 transition-opacity">
-          <img
-            src="/rockopi.png"
-            alt="Rockopi Badge"
-            className="w-16 h-16 object-cover rounded-full shadow-2xl border-2 border-green-700/50 bg-transparent drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]"
-          />
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT - Efek Kaca Putih Terang (Light Frosted Glass) */}
-      <main className="flex-1 p-8 h-screen overflow-y-auto bg-slate-50/85 backdrop-blur-md relative shadow-inner">
-        {/* Kotak-kotak (Cards) pembukuan dan tabel Anda akan melayang dengan indah di atas background ini */}
-        {children}
-      </main>
-    </div>
+      </body>
+    </html>
   );
 }

@@ -291,7 +291,7 @@ export default function CustomerOrderPage() {
     );
 
     alert(
-      `Pesanan Berhasil Dibuat!\nData telah dikirim ke Pembukuan Admin.\n\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}`,
+      `Pesanan Berhasil Dibuat!\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}`,
     );
     setOrderItems({});
   };
@@ -302,18 +302,18 @@ export default function CustomerOrderPage() {
 
   return (
     <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center">
-      {/* --- MODAL PREVIEW GAMBAR --- */}
+      {/* --- MODAL PREVIEW GAMBAR (Diperbaiki untuk HP) --- */}
       {previewImage && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
           onClick={() => setPreviewImage(null)}
         >
           <div
-            className="relative max-w-4xl w-full flex justify-center"
+            className="relative w-full max-w-lg mx-auto flex justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="absolute -top-10 right-0 md:-right-6 text-white/70 hover:text-white transition-colors bg-black/40 p-1.5 rounded-full backdrop-blur-md"
+              className="absolute -top-14 md:-top-10 right-0 text-white hover:text-white transition-colors bg-black/40 p-2 rounded-full backdrop-blur-md"
               onClick={() => setPreviewImage(null)}
             >
               <X size={24} />
@@ -321,48 +321,45 @@ export default function CustomerOrderPage() {
             <img
               src={previewImage}
               alt="Preview Menu"
-              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border-2 border-white/20"
+              className="w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl border-2 border-white/20"
             />
           </div>
         </div>
       )}
 
       {/* Kontainer Utama */}
-      <div className="min-h-screen bg-black/30 pb-24 p-4 md:p-8 pt-8 md:pt-12">
-        <div className="max-w-6xl mx-auto space-y-10">
-          {/* HEADER BARU - Logo di kiri atas sudah dihapus dan dipindahkan ke sini */}
-          <header className="flex flex-col items-center text-center space-y-6 mb-8">
+      <div className="min-h-screen bg-black/30 pb-36 p-4 md:p-8 pt-6 md:pt-12">
+        <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
+          <header className="flex flex-col items-center text-center space-y-4 md:space-y-6 mb-4 md:mb-8">
             <img
               src="/rockopi.png"
               alt="Rockopi Est 2019"
-              className="w-40 h-40 object-cover rounded-full shadow-2xl border-4 border-[#1B4332] bg-transparent"
+              className="w-28 h-28 md:w-40 md:h-40 object-cover rounded-full shadow-2xl border-[3px] md:border-4 border-[#1B4332] bg-transparent"
             />
-            <div className="drop-shadow-md flex flex-col items-center">
-              {/* Kolaborasi Teks dan Logo */}
-              <div className="flex flex-wrap items-center justify-center gap-3 mb-3">
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+            <div className="drop-shadow-md flex flex-col items-center px-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-white">
                   Welcome to
                 </h1>
                 <img
                   src="/logo.png"
                   alt="Logo Text Rockopi"
-                  className="h-8 md:h-10 object-contain drop-shadow-xl"
+                  className="h-6 md:h-10 object-contain drop-shadow-xl"
                 />
               </div>
-
-              <p className="text-gray-200 font-medium">
+              <p className="text-gray-200 font-medium text-sm md:text-base">
                 Pilih menu favoritmu, santai, dan nikmati harimu.
               </p>
             </div>
           </header>
 
-          {/* TAB KATEGORI */}
-          <div className="flex justify-center md:justify-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+          {/* TAB KATEGORI (Diperbaiki untuk Mobile - Tidak Terpotong) */}
+          <div className="flex justify-start md:justify-center gap-3 mb-6 overflow-x-auto pb-4 pt-2 px-4 snap-x scrollbar-hide w-full">
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`px-6 py-2.5 rounded-full font-bold whitespace-nowrap transition-all duration-200 shadow-lg border border-white/10 ${
+                className={`flex-shrink-0 snap-center px-5 py-2.5 md:px-6 md:py-2.5 rounded-full font-bold text-sm md:text-base whitespace-nowrap transition-all duration-200 shadow-lg border border-white/10 ${
                   activeCategory === category
                     ? "bg-white text-[#1B4332] transform scale-105"
                     : "bg-black/50 text-gray-200 hover:bg-black/70 backdrop-blur-md"
@@ -374,7 +371,7 @@ export default function CustomerOrderPage() {
           </div>
 
           {/* DAFTAR MENU */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {filteredMenu.map((item) => {
               const qty = orderItems[item.id] || 0;
               const isExpanded = expandedDesc[item.id];
@@ -383,62 +380,62 @@ export default function CustomerOrderPage() {
               return (
                 <div
                   key={item.id}
-                  className="bg-white rounded-2xl shadow-xl border-none overflow-hidden flex flex-col transition-all hover:-translate-y-1 hover:shadow-2xl"
+                  className="bg-white rounded-2xl shadow-xl border-none overflow-hidden flex flex-col transition-transform active:scale-[0.98] md:hover:-translate-y-1 md:hover:shadow-2xl"
                 >
                   <div
-                    className="h-40 overflow-hidden bg-gray-100 relative group cursor-pointer"
+                    className="h-36 md:h-40 overflow-hidden bg-gray-100 relative group cursor-pointer"
                     onClick={() => setPreviewImage(item.imageUrl)}
                   >
-                    <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-[#1B4332] shadow-sm z-10">
+                    <div className="absolute top-2 left-2 md:top-3 md:left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold text-[#1B4332] shadow-sm z-10">
                       {item.category}
                     </div>
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="w-full h-full object-cover md:group-hover:scale-110 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center"></div>
                   </div>
 
-                  <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="font-bold text-lg leading-tight mb-2 text-[#1B4332]">
+                  <div className="p-4 md:p-5 flex-1 flex flex-col">
+                    <h3 className="font-bold text-base md:text-lg leading-tight mb-1 md:mb-2 text-[#1B4332]">
                       {item.name}
                     </h3>
                     <div className="mb-4">
                       <p
-                        className={`text-sm text-gray-600 whitespace-pre-line transition-all ${isExpanded ? "" : "line-clamp-3"}`}
+                        className={`text-xs md:text-sm text-gray-600 whitespace-pre-line transition-all ${isExpanded ? "" : "line-clamp-2 md:line-clamp-3"}`}
                       >
                         {item.description}
                       </p>
                       {isLongText && (
                         <button
                           onClick={() => toggleDescription(item.id)}
-                          className="text-sm font-bold text-[#1B4332] mt-2 hover:text-green-700 transition-colors"
+                          className="text-[10px] md:text-xs font-bold text-[#1B4332] mt-1 md:mt-2 hover:text-green-700 transition-colors"
                         >
                           {isExpanded ? "Show less" : "Read more..."}
                         </button>
                       )}
                     </div>
-                    <div className="mt-auto flex items-center justify-between">
-                      <span className="font-bold text-gray-900">
+
+                    <div className="mt-auto flex items-center justify-between pt-2 border-t border-gray-100">
+                      <span className="font-bold text-sm md:text-base text-gray-900">
                         Rp {item.price.toLocaleString("id-ID")}
                       </span>
-                      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full p-1">
+                      <div className="flex items-center gap-1.5 md:gap-2 bg-gray-50 border border-gray-200 rounded-full p-1">
                         <button
                           onClick={() => handleDecrease(item.id)}
-                          className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-600 shadow-sm hover:text-red-600 transition-colors"
+                          className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center text-gray-600 shadow-sm active:bg-gray-100 transition-colors"
                           disabled={qty === 0}
                         >
-                          <Minus size={16} />
+                          <Minus size={14} />
                         </button>
-                        <span className="w-4 text-center font-bold text-sm select-none">
+                        <span className="w-4 text-center font-bold text-xs md:text-sm select-none">
                           {qty}
                         </span>
                         <button
                           onClick={() => handleIncrease(item.id)}
-                          className="w-8 h-8 rounded-full bg-[#1B4332] flex items-center justify-center text-white shadow-sm hover:bg-green-900 transition-colors"
+                          className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#1B4332] flex items-center justify-center text-white shadow-sm active:bg-green-800 transition-colors"
                         >
-                          <Plus size={16} />
+                          <Plus size={14} />
                         </button>
                       </div>
                     </div>
@@ -452,28 +449,30 @@ export default function CustomerOrderPage() {
 
       {/* FLOATING CHECKOUT BUTTON */}
       {totalBarang > 0 && (
-        <div className="fixed bottom-6 left-0 right-0 px-4 md:px-0 z-50">
+        <div className="fixed bottom-4 md:bottom-6 left-0 right-0 px-3 md:px-0 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-[#1B4332] text-white rounded-2xl p-4 shadow-2xl border border-green-800 flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="bg-[#1B4332] text-white rounded-2xl p-3 md:p-4 shadow-2xl border border-green-800 flex items-center justify-between">
+              <div className="flex items-center gap-3 md:gap-4 ml-1">
                 <div className="relative">
-                  <ShoppingCart size={24} />
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                  <ShoppingCart size={22} className="md:w-6 md:h-6" />
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] md:text-xs font-bold w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full shadow-sm">
                     {totalBarang}
                   </span>
                 </div>
-                <div>
-                  <p className="text-sm text-green-200">Total Harga</p>
-                  <p className="font-bold text-lg leading-none">
+                <div className="flex flex-col">
+                  <span className="text-[10px] md:text-xs text-green-200 leading-tight">
+                    Total Harga
+                  </span>
+                  <span className="font-bold text-base md:text-lg leading-tight">
                     Rp {totalHarga.toLocaleString("id-ID")}
-                  </p>
+                  </span>
                 </div>
               </div>
               <button
                 onClick={handleSubmitOrder}
-                className="flex items-center gap-2 bg-white text-[#1B4332] px-6 py-2.5 rounded-xl font-bold hover:bg-gray-100 transition-transform active:scale-95 shadow-sm"
+                className="flex items-center gap-1.5 md:gap-2 bg-white text-[#1B4332] px-4 py-2 md:px-6 md:py-2.5 rounded-xl text-sm md:text-base font-bold active:bg-gray-200 transition-transform active:scale-95 shadow-sm"
               >
-                Pesan / Order <Send size={18} />
+                Pesan <Send size={16} className="md:w-[18px] md:h-[18px]" />
               </button>
             </div>
           </div>
