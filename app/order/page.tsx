@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Minus, Plus, ShoppingCart, Send, X } from "lucide-react";
+import { supabase } from "../../lib/supabase"; // Import koneksi database cloud
 
 const mockMenu = [
   // --- HOT COFFEE ---
@@ -266,7 +267,8 @@ export default function CustomerOrderPage() {
     return total + item.price * (orderItems[item.id] || 0);
   }, 0);
 
-  const handleSubmitOrder = () => {
+  // LOGIKA BARU: Kirim pesanan ke database cloud Supabase
+  const handleSubmitOrder = async () => {
     if (totalBarang === 0) return;
 
     const detailPesanan = mockMenu
@@ -274,26 +276,23 @@ export default function CustomerOrderPage() {
       .map((item) => `${orderItems[item.id]}x ${item.name}`)
       .join(" & ");
 
-    const pesananBaru = {
-      id: Date.now(),
-      date: new Date().toISOString(),
-      desc: `Pesanan Pelanggan: ${detailPesanan}`,
-      type: "IN",
-      amount: totalHarga,
-    };
+    // Jalankan query Insert ke cloud database
+    const { error } = await supabase.from("orders").insert([
+      {
+        description: `Pesanan Pelanggan: ${detailPesanan}`,
+        type: "IN",
+        amount: totalHarga,
+      },
+    ]);
 
-    const pesananLama = JSON.parse(
-      localStorage.getItem("rockopi_orders") || "[]",
-    );
-    localStorage.setItem(
-      "rockopi_orders",
-      JSON.stringify([pesananBaru, ...pesananLama]),
-    );
-
-    alert(
-      `Pesanan Berhasil Dibuat!\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}`,
-    );
-    setOrderItems({});
+    if (error) {
+      alert(`Terjadi kesalahan database: ${error.message}`);
+    } else {
+      alert(
+        `Pesanan Berhasil Dibuat!\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}`,
+      );
+      setOrderItems({});
+    }
   };
 
   const filteredMenu = mockMenu.filter(
@@ -302,7 +301,7 @@ export default function CustomerOrderPage() {
 
   return (
     <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center">
-      {/* --- MODAL PREVIEW GAMBAR (Diperbaiki untuk HP) --- */}
+      {/* --- MODAL PREVIEW GAMBAR --- */}
       {previewImage && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
@@ -353,7 +352,7 @@ export default function CustomerOrderPage() {
             </div>
           </header>
 
-          {/* TAB KATEGORI (Diperbaiki untuk Mobile - Tidak Terpotong) */}
+          {/* TAB KATEGORI RESPONSIF */}
           <div className="flex justify-start md:justify-center gap-3 mb-6 overflow-x-auto pb-4 pt-2 px-4 snap-x scrollbar-hide w-full">
             {categories.map((category) => (
               <button

@@ -12,141 +12,130 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
+import { supabase } from "../lib/supabase"; // Koneksi Supabase
 
 export default function DashboardFrontend() {
   const [incomingOrders, setIncomingOrders] = useState<any[]>([]);
-  const [lastOrderCount, setLastOrderCount] = useState(0);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
-
-  // State untuk Data KPI Hari Ini
   const [todayStats, setTodayStats] = useState({
     omset: 0,
     expense: 0,
     net: 0,
     orderCount: 0,
   });
-
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Helper untuk mengecek apakah tanggal transaksi adalah hari ini
-  const isToday = (dateString: string) => {
-    const today = new Date();
-    const date = new Date(dateString);
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
+  // Fungsi penarik data ter-update dari database awan
+  const fetchCloudDashboardData = async () => {
+    try {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      // Ambil seluruh data transaksi khusus HARI INI dari server cloud
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .gte("created_at", startOfDay.toISOString())
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      let omset = 0;
+      let expense = 0;
+      let orderCount = 0;
+      const liveOrdersList: any[] = [];
+
+      data?.forEach((item: any) => {
+        if (item.type === "IN") {
+          omset += Number(item.amount);
+          if (item.description.includes("Pesanan Pelanggan")) {
+            orderCount++;
+            liveOrdersList.push(item);
+          }
+        } else if (item.type === "OUT") {
+          expense += Number(item.amount);
+        }
+      });
+
+      setTodayStats({
+        omset,
+        expense,
+        net: omset - expense,
+        orderCount,
+      });
+      setIncomingOrders(liveOrdersList.slice(0, 10));
+    } catch (e) {
+      console.error("Gagal menarik data cloud dashboard:", e);
+    }
   };
 
   useEffect(() => {
-    // 1. Setup Jam Real-time
     setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
 
-    // 2. Setup Audio Notifikasi
     audioRef.current = new Audio("/sounds/notification.mp3");
     audioRef.current.load();
 
-    // 3. Fungsi Load Data Utama
-    const loadDashboardData = () => {
-      try {
-        const allData = JSON.parse(
-          localStorage.getItem("rockopi_orders") || "[]",
-        );
+    // Jalankan penarikan data pertama kali halaman dibuka
+    fetchCloudDashboardData();
 
-        // --- HITUNG KPI HARI INI ---
-        let omset = 0;
-        let expense = 0;
-        let orderCount = 0;
-        const liveOrdersList: any[] = [];
+    // =========================================================
+    // SENSOR REAL-TIME DATABASES (SUPABASE STREAMING)
+    // =========================================================
+    const realtimeSubscription = supabase
+      .channel("live-orders-channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload) => {
+          // 1. Tarik ulang kalkulasi angka KPI terbaru
+          fetchCloudDashboardData();
 
-        allData.forEach((item: any) => {
-          if (isToday(item.date)) {
-            // Hitung Uang Masuk / Keluar
-            if (item.type === "IN") {
-              omset += item.amount;
-              // Pisahkan untuk dimasukkan ke tabel Live Orders (khusus penjualan)
-              if (item.desc.includes("Pesanan Pelanggan")) {
-                orderCount++;
-                liveOrdersList.push(item);
-              }
-            } else if (item.type === "OUT") {
-              expense += item.amount;
+          // 2. Bunyikan speaker alarm jika baris data baru adalah pesanan kopi
+          if (
+            payload.new &&
+            payload.new.description.includes("Pesanan Pelanggan")
+          ) {
+            if (audioRef.current) {
+              audioRef.current
+                .play()
+                .catch((err) =>
+                  console.log(
+                    "Autoplay diblokir browser, butuh interaksi klik pertama:",
+                    err,
+                  ),
+                );
             }
           }
-        });
+        },
+      )
+      .subscribe();
 
-        setTodayStats({
-          omset,
-          expense,
-          net: omset - expense,
-          orderCount,
-        });
-
-        // --- UPDATE TABEL LIVE ORDERS ---
-        // Urutkan pesanan dari yang paling baru
-        const sortedOrders = liveOrdersList.sort(
-          (a: any, b: any) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-        const latestOrders = sortedOrders.slice(0, 10);
-
-        // Putar suara jika ada pesanan baru bertambah
-        if (sortedOrders.length > lastOrderCount && lastOrderCount !== 0) {
-          if (audioRef.current) {
-            audioRef.current
-              .play()
-              .catch((e) => console.log("Autoplay diblokir", e));
-          }
-        }
-
-        setIncomingOrders(latestOrders);
-        setLastOrderCount(sortedOrders.length);
-      } catch (e) {
-        console.error("Gagal load data dashboard:", e);
-      }
-    };
-
-    // Load pertama kali
-    loadDashboardData();
-
-    // 4. Detektor Tab Lain (Real-time Sync)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "rockopi_orders" || e.key === "rockopi_inventory_logs") {
-        loadDashboardData();
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    // Cleanup
     return () => {
       clearInterval(timer);
-      window.removeEventListener("storage", handleStorageChange);
+      supabase.removeChannel(realtimeSubscription);
     };
-  }, [lastOrderCount]);
+  }, []);
 
-  if (!currentTime) return null; // Mencegah hydration error di Next.js
+  if (!currentTime) return null;
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      {/* --- HEADER DASHBOARD --- */}
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 drop-shadow-sm flex items-center gap-3">
             Dashboard Utama
             <span className="text-xs bg-black/60 backdrop-blur-sm text-green-300 font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 shadow-lg">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              Live Sync
+              Cloud Real-Time Connected
             </span>
           </h2>
           <p className="text-gray-700 font-medium mt-1">
-            Pantau performa Rockopi hari ini secara sekilas.
+            Pantau performa Rockopi hari ini secara sekilas melalui database
+            cloud.
           </p>
         </div>
 
-        {/* Jam Real-time */}
         <div className="bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-sm border border-white/60 flex items-center gap-4">
           <Clock className="text-[#1B4332]" size={24} />
           <div>
@@ -164,11 +153,10 @@ export default function DashboardFrontend() {
         </div>
       </header>
 
-      {/* --- KARTU KPI HARI INI (4 Kolom) --- */}
+      {/* STATS CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* KPI 1: Pesanan */}
-        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/60 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-          <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/60 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-5">
             <ShoppingCart size={100} />
           </div>
           <div className="flex items-center gap-3 mb-4">
@@ -183,9 +171,8 @@ export default function DashboardFrontend() {
           </p>
         </div>
 
-        {/* KPI 2: Omset */}
-        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/60 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-          <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/60 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-5">
             <TrendingUp size={100} />
           </div>
           <div className="flex items-center gap-3 mb-4">
@@ -199,9 +186,8 @@ export default function DashboardFrontend() {
           </p>
         </div>
 
-        {/* KPI 3: Pengeluaran */}
-        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/60 relative overflow-hidden group hover:scale-[1.02] transition-transform">
-          <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-lg border border-white/60 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-5">
             <TrendingDown size={100} />
           </div>
           <div className="flex items-center gap-3 mb-4">
@@ -215,17 +201,14 @@ export default function DashboardFrontend() {
           </p>
         </div>
 
-        {/* KPI 4: Laba Bersih */}
         <div
-          className={`backdrop-blur-xl p-6 rounded-3xl shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-transform ${todayStats.net >= 0 ? "bg-[#1B4332]/90 border-green-800" : "bg-red-800/90 border-red-900"} text-white`}
+          className={`backdrop-blur-xl p-6 rounded-3xl shadow-xl relative overflow-hidden group text-white ${todayStats.net >= 0 ? "bg-gradient-to-br from-[#1B4332] to-[#0d261b]" : "bg-red-800"}`}
         >
-          <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <div className="absolute -right-4 -top-4 opacity-10">
             <DollarSign size={100} />
           </div>
           <div className="flex items-center gap-3 mb-4">
-            <div
-              className={`w-10 h-10 rounded-full bg-black/30 flex items-center justify-center ${todayStats.net >= 0 ? "text-green-300" : "text-red-300"}`}
-            >
+            <div className="w-10 h-10 rounded-full bg-black/30 flex items-center justify-center">
               <DollarSign size={20} />
             </div>
             <h3 className="text-sm font-bold text-green-100">Laba Hari Ini</h3>
@@ -237,9 +220,8 @@ export default function DashboardFrontend() {
         </div>
       </div>
 
-      {/* --- AREA UTAMA (Tabel Pesanan & Akses Cepat) --- */}
+      {/* LIVE FEED TABEL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* KIRI: Tabel Live Orders (Lebih Lebar) */}
         <div className="lg:col-span-2 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl border border-white/60 overflow-hidden">
           <div
             className={`border-b border-gray-200/60 p-5 flex items-center justify-between ${incomingOrders.length > 0 ? "bg-red-50/50" : "bg-gray-50/50"}`}
@@ -254,11 +236,11 @@ export default function DashboardFrontend() {
                 />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Pesanan Masuk (Live)
+                Pesanan Masuk (Live Cloud)
               </h3>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">
-              <Activity size={14} className="text-blue-500" /> Hari Ini
+              <Activity size={14} className="text-blue-500" /> Real-time Feed
             </div>
           </div>
 
@@ -267,10 +249,11 @@ export default function DashboardFrontend() {
               <div className="p-16 text-center text-gray-500">
                 <Store size={48} className="mx-auto mb-4 opacity-20" />
                 <p className="font-bold text-xl text-[#1B4332] mb-1">
-                  Toko Sudah Siap!
+                  Toko Terhubung Cloud!
                 </p>
                 <p className="text-sm">
-                  Menunggu pesanan pertama masuk hari ini...
+                  Belum ada pesanan masuk hari ini. Gunakan HP untuk mengetes
+                  orderan.
                 </p>
               </div>
             ) : (
@@ -278,103 +261,64 @@ export default function DashboardFrontend() {
                 <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                   <tr className="border-b border-gray-200 text-sm text-gray-600">
                     <th className="p-4 font-bold">Waktu</th>
-                    <th className="p-4 font-bold">
-                      Detail Pesanan (Menu x Jumlah)
-                    </th>
+                    <th className="p-4 font-bold">Detail Pesanan</th>
                     <th className="p-4 font-bold text-right">Total Bayar</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {incomingOrders.map((order: any, index: number) => {
-                    const isNewest = index === 0;
-                    return (
-                      <tr
-                        key={order.id}
-                        className={`border-b border-gray-100 transition-colors ${isNewest ? "bg-green-50/50" : "hover:bg-white/60"}`}
-                      >
-                        <td className="p-4 whitespace-nowrap text-gray-600 text-sm">
-                          <span className="font-bold text-gray-900 bg-white shadow-sm border px-2 py-1 rounded-md">
-                            {new Date(order.date).toLocaleTimeString("id-ID", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <p
-                            className={`font-bold ${isNewest ? "text-[#1B4332]" : "text-gray-800"}`}
-                          >
-                            {order.desc.replace("Pesanan Pelanggan: ", "")}
-                          </p>
-                        </td>
-                        <td className="p-4 text-right font-black text-lg text-[#1B4332] whitespace-nowrap">
-                          Rp {order.amount.toLocaleString("id-ID")}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {incomingOrders.map((order: any, index: number) => (
+                    <tr
+                      key={order.id}
+                      className={`border-b border-gray-100 transition-colors ${index === 0 ? "bg-green-50/50" : "hover:bg-white/60"}`}
+                    >
+                      <td className="p-4 whitespace-nowrap text-gray-600 text-sm">
+                        <span className="font-bold text-gray-900 bg-white shadow-sm border px-2 py-1 rounded-md">
+                          {new Date(order.created_at).toLocaleTimeString(
+                            "id-ID",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-bold text-gray-800">
+                          {order.description.replace("Pesanan Pelanggan: ", "")}
+                        </p>
+                      </td>
+                      <td className="p-4 text-right font-black text-lg text-[#1B4332] whitespace-nowrap">
+                        Rp {Number(order.amount).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
           </div>
         </div>
 
-        {/* KANAN: Action Menu / Pintasan */}
+        {/* PINDAH KE HALAMAN LAIN */}
         <div className="space-y-6">
           <div className="bg-black/80 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/10 text-white relative overflow-hidden">
             <div className="absolute -right-10 -bottom-10 opacity-20 text-white">
               <Store size={150} />
             </div>
-            <h3 className="font-bold text-lg mb-2 relative z-10">
-              Status Sistem POS
-            </h3>
-            <div className="flex items-center gap-3 relative z-10 mb-6">
+            <h3 className="font-bold text-lg mb-2">Status Sistem Cloud</h3>
+            <div className="flex items-center gap-3 mb-6">
               <span className="relative flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
               </span>
-              <span className="font-bold text-green-400">ONLINE & AKTIF</span>
+              <span className="font-bold text-green-400">
+                SUPABASE LIVE STREAM
+              </span>
             </div>
 
             <a
               href="/order"
               target="_blank"
-              className="w-full relative z-10 bg-white text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+              className="w-full bg-white text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-transform active:scale-95 shadow-md"
             >
               Buka Layar Kasir / Order <ArrowRight size={20} />
             </a>
-          </div>
-
-          <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/60">
-            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Activity size={18} className="text-[#1B4332]" /> Pintasan Cepat
-            </h3>
-            <div className="space-y-3">
-              <a
-                href="/transactions"
-                className="block p-4 rounded-xl bg-gray-50 border border-gray-100 font-bold text-gray-700 hover:border-[#1B4332] hover:text-[#1B4332] transition-colors group"
-              >
-                <div className="flex justify-between items-center">
-                  Input Bahan Baku Baru
-                  <ArrowRight
-                    size={16}
-                    className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all"
-                  />
-                </div>
-              </a>
-              <a
-                href="/finance"
-                className="block p-4 rounded-xl bg-gray-50 border border-gray-100 font-bold text-gray-700 hover:border-[#1B4332] hover:text-[#1B4332] transition-colors group"
-              >
-                <div className="flex justify-between items-center">
-                  Lihat Analisis Penjualan Mingguan
-                  <ArrowRight
-                    size={16}
-                    className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all"
-                  />
-                </div>
-              </a>
-            </div>
           </div>
         </div>
       </div>
