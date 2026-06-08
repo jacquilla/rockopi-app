@@ -1,259 +1,114 @@
-import { Plus } from "lucide-react";
+"use client";
 
-// --- MOCK DATA 25 MENU ROCKOPI ---
-const mockProducts = [
+import { Package, Plus, Coffee, IceCream, Utensils } from "lucide-react";
+
+const currentProducts = [
   {
     id: 1,
-    sku: "RCK-HOT-001",
-    name: "Hot Coffee Milk",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
+    name: "Hot Rockopi ⭐",
+    category: "Hot Coffee",
+    price: 25000,
+    status: "Aktif",
   },
   {
     id: 2,
-    sku: "RCK-HOT-002",
-    name: "Hot Rockopi ⭐",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
+    name: "Iced Rockopi ⭐",
+    category: "Iced Coffee",
+    price: 25000,
+    status: "Aktif",
   },
   {
     id: 3,
-    sku: "RCK-HOT-003",
-    name: "Hot Americano",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
+    name: "Brown Sugar Rockopi",
+    category: "Iced Coffee",
+    price: 25000,
+    status: "Aktif",
   },
   {
     id: 4,
-    sku: "RCK-HOT-004",
-    name: "Cappucinno",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
+    name: "Hot Chocolate ⭐",
+    category: "Non Coffee",
+    price: 25000,
+    status: "Aktif",
   },
   {
     id: 5,
-    sku: "RCK-HOT-005",
-    name: "V60 Coffee",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 6,
-    sku: "RCK-HOT-006",
-    name: "Vietnam Drip",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 7,
-    sku: "RCK-ICE-001",
-    name: "Iced Rockopi ⭐",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 8,
-    sku: "RCK-ICE-002",
-    name: "Brown Sugar Rockopi",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 9,
-    sku: "RCK-ICE-003",
-    name: "Iced Americano",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 10,
-    sku: "RCK-ICE-004",
-    name: "Pandan Iced Coffee",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 11,
-    sku: "RCK-ICE-005",
-    name: "Banana Iced Coffee",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 12,
-    sku: "RCK-ICE-006",
-    name: "Butterscotch Iced Coffee",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 13,
-    sku: "RCK-ICE-007",
-    name: "Caramel Macchiato ⭐",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 14,
-    sku: "RCK-ICE-008",
-    name: "Japanese Iced Coffee",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 15,
-    sku: "RCK-ICE-009",
-    name: "Iced Hazelnut Latte",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 16,
-    sku: "RCK-NON-001",
-    name: "Hot Chocolate ⭐",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 17,
-    sku: "RCK-NON-002",
-    name: "Iced Chocolate ⭐",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 18,
-    sku: "RCK-NON-003",
-    name: "Hot Matcha",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 19,
-    sku: "RCK-NON-004",
     name: "Iced Matcha",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 20,
-    sku: "RCK-NON-005",
-    name: "Hot Taro",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 21,
-    sku: "RCK-NON-006",
-    name: "Iced Taro",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 22,
-    sku: "RCK-NON-007",
-    name: "Hot Vanilla",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 23,
-    sku: "RCK-NON-008",
-    name: "Iced Vanilla",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 24,
-    sku: "RCK-NON-009",
-    name: "Hot Lemon Tea",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
-  },
-  {
-    id: 25,
-    sku: "RCK-NON-010",
-    name: "Iced Lemon Tea",
-    current_stock: 99,
-    min_stock: 20,
-    unit: "Cup",
+    category: "Non Coffee",
+    price: 30000,
+    status: "Aktif",
   },
 ];
 
-export default function MasterProductsUI() {
+export default function ProductsPage() {
   return (
-    <div className="space-y-6">
-      <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold">Master Produk</h2>
-          <p className="text-gray-500">
-            Kelola data menu dan stok di Gudang Rockopi.
-          </p>
-        </div>
-        <button className="flex items-center gap-2 bg-[#1B4332] text-white px-4 py-2 rounded-lg hover:bg-green-900 transition-colors">
-          <Plus size={18} /> Tambah Produk
-        </button>
-      </header>
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* HEADER UTAMA */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <header className="flex items-center gap-3">
+          <div className="p-3 bg-white/80 backdrop-blur-sm text-[#1B4332] rounded-lg shadow-sm border border-white/50">
+            <Package size={24} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 drop-shadow-sm">
+              Master Produk
+            </h2>
+            <p className="text-gray-700 font-medium">
+              Kelola daftar menu dan harga jual cafe.
+            </p>
+          </div>
+        </header>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="max-h-[600px] overflow-y-auto">
+        <button className="w-full sm:w-auto bg-[#1B4332] hover:bg-green-900 text-white font-bold px-5 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 text-sm">
+          <Plus size={18} /> Tambah Menu Baru
+        </button>
+      </div>
+
+      {/* STRUKTUR TABEL MENU */}
+      <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 overflow-hidden mt-8">
+        <div className="p-5 border-b border-gray-200/60 bg-gray-50/50 flex justify-between items-center">
+          <h3 className="font-bold text-gray-800">Daftar Menu Aktif</h3>
+          <span className="text-xs font-bold bg-green-100 text-green-800 px-3 py-1 rounded-full">
+            {currentProducts.length} Produk Terdaftar
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[600px]">
-            <thead className="sticky top-0 bg-gray-50 shadow-sm">
-              <tr className="border-b text-sm text-gray-500">
-                <th className="p-4 font-medium">SKU</th>
-                <th className="p-4 font-medium">Nama Menu</th>
-                <th className="p-4 font-medium">Stok Saat Ini</th>
-                <th className="p-4 font-medium">Aksi</th>
+            <thead className="bg-gray-50">
+              <tr className="border-b border-gray-200 text-sm text-gray-600">
+                <th className="p-4 font-bold">Nama Menu</th>
+                <th className="p-4 font-bold">Kategori</th>
+                <th className="p-4 font-bold">Harga Jual</th>
+                <th className="p-4 font-bold text-center">Status</th>
               </tr>
             </thead>
             <tbody>
-              {mockProducts.map((product) => (
+              {currentProducts.map((product) => (
                 <tr
                   key={product.id}
-                  className="border-b hover:bg-gray-50 transition-colors"
+                  className="border-b border-gray-100/50 hover:bg-white/60 transition-colors"
                 >
-                  <td className="p-4 font-mono text-sm text-gray-500">
-                    {product.sku}
-                  </td>
-                  <td className="p-4 font-bold text-gray-800">
+                  <td className="p-4 font-bold text-gray-800 flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 rounded-lg text-[#1B4332]">
+                      {product.category.includes("Hot") ? (
+                        <Coffee size={18} />
+                      ) : (
+                        <IceCream size={18} />
+                      )}
+                    </div>
                     {product.name}
                   </td>
-                  <td className="p-4">
-                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">
-                      {product.current_stock} {product.unit}
-                    </span>
+                  <td className="p-4 text-sm font-medium text-gray-600">
+                    {product.category}
                   </td>
-                  <td className="p-4">
-                    <button className="text-blue-600 hover:underline text-sm mr-3">
-                      Edit
-                    </button>
-                    <button className="text-red-600 hover:underline text-sm">
-                      Hapus
-                    </button>
+                  <td className="p-4 font-bold text-gray-900">
+                    Rp {product.price.toLocaleString("id-ID")}
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className="bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                      {product.status}
+                    </span>
                   </td>
                 </tr>
               ))}
