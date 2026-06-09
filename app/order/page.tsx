@@ -1,5 +1,5 @@
 "use client";
-
+export const dynamic = "force-dynamic";
 import { useState } from "react";
 import { Minus, Plus, ShoppingCart, Send, X } from "lucide-react";
 import { supabase } from "../../lib/supabase"; // Import koneksi database cloud
