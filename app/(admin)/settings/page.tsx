@@ -1,24 +1,88 @@
 "use client";
 
-import { useState } from "react";
-import { Palette, Smartphone, Share2, Lock, KeyRound, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "../../../lib/supabase";
+import {
+  Palette,
+  Smartphone,
+  Share2,
+  Lock,
+  KeyRound,
+  X,
+  Loader2,
+} from "lucide-react";
 import PoweredByFooter from "../../../components/PoweredByFooter";
 
+export const dynamic = "force-dynamic";
+
 export default function SettingsPage() {
-  // State untuk mengontrol pop-up Ganti PIN
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [oldPin, setOldPin] = useState("");
   const [newPin, setNewPin] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSavePin = (e: React.FormEvent) => {
+  // State untuk menyimpan PIN asli dari database
+  const [cachedDbPin, setCachedDbPin] = useState("");
+
+  // Ambil data PIN aktif dari Supabase saat halaman dibuka
+  const fetchCurrentPin = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("admin_settings")
+        .select("value")
+        .eq("key", "admin_pin")
+        .single();
+
+      if (error) throw error;
+      if (data) setCachedDbPin(data.value);
+    } catch (err) {
+      console.error("Gagal memuat konfigurasi PIN keamanan:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCurrentPin();
+  }, []);
+
+  const handleSavePin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Di sini nanti kita sambungkan dengan sistem Auth Supabase
-    alert(
-      "Berhasil! Konfigurasi PIN baru telah disiapkan untuk dihubungkan ke database.",
-    );
-    setIsPinModalOpen(false);
-    setOldPin("");
-    setNewPin("");
+    if (oldPin.length !== 6 || newPin.length !== 6) {
+      alert("PIN harus berekstensi 6 digit angka penuh!");
+      return;
+    }
+
+    // VERIFIKASI: Cek apakah input PIN lama sesuai dengan yang di database
+    if (oldPin !== cachedDbPin) {
+      alert(
+        "Gagal! PIN lama yang Anda masukkan salah. Sistem menolak perubahan.",
+      );
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // EKSEKUSI UPDATE: Kirim PIN baru ke Cloud Supabase
+      const { error } = await supabase
+        .from("admin_settings")
+        .update({ value: newPin })
+        .eq("key", "admin_pin");
+
+      if (error) throw error;
+
+      alert(
+        "Luar biasa! PIN Akses Admin Rockopi berhasil diperbarui di database cloud.",
+      );
+      setIsPinModalOpen(false);
+      setOldPin("");
+      setNewPin("");
+
+      // Ambil ulang data PIN terbaru agar memori lokal ter-update
+      fetchCurrentPin();
+    } catch (err: any) {
+      alert(`Gagal memperbarui database: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -26,14 +90,17 @@ export default function SettingsPage() {
       {/* MODAL GANTI PIN (GLASSMORPHISM) */}
       {isPinModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white/10 backdrop-blur-2xl w-full max-w-md rounded-3xl shadow-2xl border border-white/20 overflow-hidden flex flex-col transform transition-all">
+          <div className="bg-white/10 backdrop-blur-2xl w-full max-w-md rounded-3xl shadow-2xl border border-white/20 overflow-hidden flex flex-col">
             <div className="p-5 border-b border-white/10 flex justify-between items-center bg-black/40">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <KeyRound className="text-yellow-400" /> Ganti PIN Akses
               </h3>
               <button
-                onClick={() => setIsPinModalOpen(false)}
-                className="text-white/60 hover:text-white bg-white/10 p-2 rounded-full transition-all active:scale-95"
+                onClick={() => {
+                  if (!isSaving) setIsPinModalOpen(false);
+                }}
+                className="text-white/60 hover:text-white bg-white/10 p-2 rounded-full transition-all"
+                disabled={isSaving}
               >
                 <X size={18} />
               </button>
@@ -48,9 +115,10 @@ export default function SettingsPage() {
                   type="password"
                   maxLength={6}
                   value={oldPin}
-                  onChange={(e) => setOldPin(e.target.value)}
-                  placeholder="Masukkan 6 digit PIN lama"
+                  onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ""))} // Hanya menerima angka
+                  placeholder="------"
                   className="w-full bg-black/40 text-white font-bold px-4 py-3.5 rounded-xl border border-white/10 focus:border-yellow-400 outline-none transition-all text-center tracking-[0.5em] text-lg"
+                  disabled={isSaving}
                   required
                 />
               </div>
@@ -63,18 +131,27 @@ export default function SettingsPage() {
                   type="password"
                   maxLength={6}
                   value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  placeholder="Masukkan 6 digit PIN baru"
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))} // Hanya menerima angka
+                  placeholder="------"
                   className="w-full bg-black/40 text-white font-bold px-4 py-3.5 rounded-xl border border-white/10 focus:border-yellow-400 outline-none transition-all text-center tracking-[0.5em] text-lg"
+                  disabled={isSaving}
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full mt-2 bg-yellow-500 hover:bg-yellow-600 text-black font-black py-3.5 rounded-xl transition-all shadow-lg active:scale-95 text-sm"
+                disabled={isSaving}
+                className="w-full mt-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-black py-3.5 rounded-xl transition-all shadow-lg active:scale-95 text-sm flex items-center justify-center gap-2"
               >
-                SIMPAN PIN BARU
+                {isSaving ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} /> Menyimpan ke
+                    Cloud...
+                  </>
+                ) : (
+                  "SIMPAN PIN BARU"
+                )}
               </button>
             </form>
           </div>
@@ -93,11 +170,12 @@ export default function SettingsPage() {
             </p>
           </header>
 
-          {/* GRID TILE: Diubah menjadi 2 kolom di tablet/laptop agar 4 kotak tampil rapi dan proporsional */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* TILE 1: KEAMANAN & PIN (BARU) */}
             <div
-              onClick={() => setIsPinModalOpen(true)}
+              onClick={() => {
+                if (cachedDbPin) setIsPinModalOpen(true);
+                else alert("Sistem sedang menyinkronkan data keamanan...");
+              }}
               className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 hover:bg-white/15 transition-all cursor-pointer group shadow-xl"
             >
               <div className="w-12 h-12 bg-yellow-500/20 rounded-2xl flex items-center justify-center mb-6 text-yellow-400 group-hover:scale-110 transition-transform">
