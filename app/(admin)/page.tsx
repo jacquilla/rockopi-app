@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
-import { supabase } from "../lib/supabase"; // Koneksi Supabase
+import { supabase } from "../../lib/supabase"; // Koneksi Supabase
 
 export default function DashboardFrontend() {
   const [incomingOrders, setIncomingOrders] = useState<any[]>([]);
