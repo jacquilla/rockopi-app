@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Minus, Plus, ShoppingCart, Send, X, UserCircle2 } from "lucide-react";
-import { supabase } from "../../lib/supabase"; // Import koneksi database cloud
+import { supabase } from "../../lib/supabase";
 
 const mockMenu = [
   // --- HOT COFFEE ---
@@ -12,7 +12,7 @@ const mockMenu = [
     name: "Hot Coffee Milk",
     price: 20000,
     description:
-      "Kopi susu panas klasik dengan perpaduan espresso dan susu segar yang lembut.\n\nClassic hot milk coffee with a smooth blend of espresso and fresh milk.",
+      "Kopi susu panas klasik dengan perpaduan espresso dan susu segar yang lembut.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -21,7 +21,7 @@ const mockMenu = [
     name: "Hot Rockopi ⭐",
     price: 25000,
     description:
-      "Signature kami. Paduan rahasia kopi pekat dan rasa manis karamel bernuansa nusantara.\n\nOur signature. A secret blend of bold coffee and archipelago-style caramel sweetness.",
+      "Signature kami. Paduan rahasia kopi pekat dan rasa manis karamel bernuansa nusantara.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -30,7 +30,7 @@ const mockMenu = [
     name: "Hot Americano",
     price: 20000,
     description:
-      "Ekstraksi espresso murni yang diseduh sempurna dengan air panas. Bold dan mantap.\n\nPure espresso extraction perfectly brewed with hot water. Bold and steady.",
+      "Ekstraksi espresso murni yang diseduh sempurna dengan air panas. Bold dan mantap.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -39,7 +39,7 @@ const mockMenu = [
     name: "Cappucinno",
     price: 25000,
     description:
-      "Kopi dengan rasio seimbang antara espresso, susu panas, dan busa susu tebal di atasnya.\n\nA balanced ratio of espresso, steamed milk, and thick milk foam on top.",
+      "Kopi dengan rasio seimbang antara espresso, susu panas, dan busa susu tebal di atasnya.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -48,7 +48,7 @@ const mockMenu = [
     name: "V60 Coffee",
     price: 25000,
     description:
-      "Seduhan manual V60 yang menghasilkan notes rasa kopi yang bersih, ringan, dan aromatik.\n\nManual V60 brew delivering clean, light, and aromatic coffee tasting notes.",
+      "Seduhan manual V60 yang menghasilkan notes rasa kopi yang bersih, ringan, dan aromatik.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -57,7 +57,7 @@ const mockMenu = [
     name: "Vietnam Drip",
     price: 25000,
     description:
-      "Kopi pekat ala Vietnam yang menetes perlahan ke dalam kental manis. Manis dan kuat!\n\nStrong Vietnamese-style coffee dripping slowly into sweetened condensed milk. Sweet and bold!",
+      "Kopi pekat ala Vietnam yang menetes perlahan ke dalam kental manis. Manis dan kuat!",
     imageUrl: "/Hot Menu.avif",
   },
 
@@ -68,7 +68,7 @@ const mockMenu = [
     name: "Iced Rockopi ⭐",
     price: 25000,
     description:
-      "Es kopi susu andalan Rockopi. Segar, creamy, dengan rasa kopi yang nendang banget!\n\nRockopi's flagship iced milk coffee. Refreshing, creamy, with a real coffee kick!",
+      "Es kopi susu andalan Rockopi. Segar, creamy, dengan rasa kopi yang nendang banget!",
     imageUrl: "/Iced Rockopi.avif",
   },
   {
@@ -77,7 +77,7 @@ const mockMenu = [
     name: "Brown Sugar Rockopi",
     price: 25000,
     description:
-      "Es kopi susu dengan manisnya gula aren asli kualitas premium. Sangat menyegarkan.\n\nIced milk coffee with the sweetness of premium quality palm sugar. Highly refreshing.",
+      "Es kopi susu dengan manisnya gula aren asli kualitas premium. Sangat menyegarkan.",
     imageUrl: "/Brown Sugar.avif",
   },
   {
@@ -86,7 +86,7 @@ const mockMenu = [
     name: "Iced Americano",
     price: 25000,
     description:
-      "Es kopi hitam murni tanpa gula. Pilihan tepat untuk penyegar di cuaca panas.\n\nPure iced black coffee with no sugar. The perfect refresher for hot weather.",
+      "Es kopi hitam murni tanpa gula. Pilihan tepat untuk penyegar di cuaca panas.",
     imageUrl: "/Iced Americano.avif",
   },
   {
@@ -95,7 +95,7 @@ const mockMenu = [
     name: "Pandan Iced Coffee",
     price: 28000,
     description:
-      "Kopi susu dingin dengan sentuhan sirup pandan yang wangi dan eksotis khas Asia.\n\nCold milk coffee with a touch of fragrant and exotic Asian pandan syrup.",
+      "Kopi susu dingin dengan sentuhan sirup pandan yang wangi dan eksotis khas Asia.",
     imageUrl: "/Iced Pandan Coffee.avif",
   },
   {
@@ -104,7 +104,7 @@ const mockMenu = [
     name: "Banana Iced Coffee",
     price: 28000,
     description:
-      "Unik! Sensasi es kopi susu berpadu dengan manis dan wanginya buah pisang.\n\nUnique! The sensation of iced milk coffee blended with the sweet fragrance of banana.",
+      "Unik! Sensasi es kopi susu berpadu dengan manis dan wanginya buah pisang.",
     imageUrl: "/Banana Iced Coffee.avif",
   },
   {
@@ -113,7 +113,7 @@ const mockMenu = [
     name: "Butterscotch Iced Coffee",
     price: 30000,
     description:
-      "Kopi dingin dengan sirup butterscotch yang legit, manis, dan buttery.\n\nCold coffee with rich, sweet, and buttery butterscotch syrup.",
+      "Kopi dingin dengan sirup butterscotch yang legit, manis, dan buttery.",
     imageUrl: "/Butterscotch.avif",
   },
   {
@@ -122,7 +122,7 @@ const mockMenu = [
     name: "Caramel Macchiato ⭐",
     price: 30000,
     description:
-      "Paduan es, susu, vanilla, espresso, dengan siraman saus karamel lumer di atasnya.\n\nA blend of ice, milk, vanilla, espresso, topped with melting caramel sauce.",
+      "Paduan es, susu, vanilla, espresso, dengan siraman saus karamel lumer di atasnya.",
     imageUrl: "/Caramel Macchiato.avif",
   },
   {
@@ -131,7 +131,7 @@ const mockMenu = [
     name: "Japanese Iced Coffee",
     price: 30000,
     description:
-      "Seduhan filter yang langsung diteteskan ke atas es batu. Karakter rasa cerah dan fruity.\n\nFilter brew dripped directly onto ice cubes. Bright and fruity flavor profile.",
+      "Seduhan filter yang langsung diteteskan ke atas es batu. Karakter rasa cerah dan fruity.",
     imageUrl: "/Iced Americano.avif",
   },
   {
@@ -140,7 +140,7 @@ const mockMenu = [
     name: "Iced Hazelnut Latte",
     price: 30000,
     description:
-      "Es latte klasik dengan sentuhan sirup hazelnut yang nutty dan menenangkan.\n\nClassic iced latte with a nutty and soothing touch of hazelnut syrup.",
+      "Es latte klasik dengan sentuhan sirup hazelnut yang nutty dan menenangkan.",
     imageUrl: "/Caramel Macchiato.avif",
   },
 
@@ -151,7 +151,7 @@ const mockMenu = [
     name: "Hot Chocolate ⭐",
     price: 25000,
     description:
-      "Cokelat panas premium yang tebal dan memanjakan lidah. Cocok untuk mood booster.\n\nThick and pampering premium hot chocolate. Perfect for a mood booster.",
+      "Cokelat panas premium yang tebal dan memanjakan lidah. Cocok untuk mood booster.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -160,7 +160,7 @@ const mockMenu = [
     name: "Iced Chocolate ⭐",
     price: 28000,
     description:
-      "Cokelat dingin spesial Rockopi. Manisnya pas, cokelatnya sangat terasa!\n\nRockopi's special iced chocolate. Perfectly sweet, extremely chocolatey!",
+      "Cokelat dingin spesial Rockopi. Manisnya pas, cokelatnya sangat terasa!",
     imageUrl: "/Iced Chocolate.avif",
   },
   {
@@ -168,8 +168,7 @@ const mockMenu = [
     category: "Non Coffee",
     name: "Hot Matcha",
     price: 28000,
-    description:
-      "Teh hijau matcha Jepang otentik diseduh hangat bersama susu.\n\nAuthentic Japanese matcha green tea brewed warm with milk.",
+    description: "Teh hijau matcha Jepang otentik diseduh hangat bersama susu.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -178,7 +177,7 @@ const mockMenu = [
     name: "Iced Matcha",
     price: 30000,
     description:
-      "Es matcha latte ala Jepang yang manis, wangi, dan menyejukkan hati.\n\nSweet, fragrant, and soothing Japanese-style iced matcha latte.",
+      "Es matcha latte ala Jepang yang manis, wangi, dan menyejukkan hati.",
     imageUrl: "/Iced Matcha.avif",
   },
   {
@@ -187,7 +186,7 @@ const mockMenu = [
     name: "Hot Taro",
     price: 28000,
     description:
-      "Minuman hangat rasa talas ungu yang legit, creamy, dan sangat comforting.\n\nWarm purple yam drink that is sweet, creamy, and deeply comforting.",
+      "Minuman hangat rasa talas ungu yang legit, creamy, dan sangat comforting.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -196,7 +195,7 @@ const mockMenu = [
     name: "Iced Taro",
     price: 30000,
     description:
-      "Es taro manis yang lembut dan segar, favorit untuk yang tidak minum kopi.\n\nSmooth and refreshing sweet iced taro, a favorite for non-coffee drinkers.",
+      "Es taro manis yang lembut dan segar, favorit untuk yang tidak minum kopi.",
     imageUrl: "/Iced Vanilla.avif",
   },
   {
@@ -205,7 +204,7 @@ const mockMenu = [
     name: "Hot Vanilla",
     price: 25000,
     description:
-      "Susu panas dengan ekstrak vanilla alami. Sangat menenangkan diminum sore hari.\n\nHot milk with natural vanilla extract. Very soothing to drink in the afternoon.",
+      "Susu panas dengan ekstrak vanilla alami. Sangat menenangkan dimasum sore hari.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -214,7 +213,7 @@ const mockMenu = [
     name: "Iced Vanilla",
     price: 28000,
     description:
-      "Kesegaran susu dingin dan vanilla manis yang simpel namun bikin nagih.\n\nThe simple yet addictive freshness of cold milk and sweet vanilla.",
+      "Kesegaran susu dingin dan vanilla manis yang simpel namun bikin nagih.",
     imageUrl: "/Iced Vanilla.avif",
   },
   {
@@ -223,7 +222,7 @@ const mockMenu = [
     name: "Hot Lemon Tea",
     price: 20000,
     description:
-      "Seduhan teh hitam hangat dengan perasan lemon asli. Menghangatkan tenggorokan.\n\nWarm brewed black tea with real lemon squeeze. Warms the throat.",
+      "Seduhan teh hitam hangat dengan perasan lemon asli. Menghangatkan tenggorokan.",
     imageUrl: "/Hot Menu.avif",
   },
   {
@@ -232,12 +231,11 @@ const mockMenu = [
     name: "Iced Lemon Tea",
     price: 23000,
     description:
-      "Es teh lemon klasik, pelepas dahaga nomor satu setelah lelah beraktivitas.\n\nClassic iced lemon tea, the number one thirst quencher after a tiring day.",
+      "Es teh lemon klasik, pelepas dahaga nomor satu setelah lelah beraktivitas.",
     imageUrl: "/Iced Lemon Tea.avif",
   },
 ];
 
-// Baris ini memastikan halaman selalu diperbarui secara Live (bypass build error)
 export const dynamic = "force-dynamic";
 
 export default function CustomerOrderPage() {
@@ -247,8 +245,6 @@ export default function CustomerOrderPage() {
   );
   const [activeCategory, setActiveCategory] = useState("Hot Coffee");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-
-  // STATE BARU: Menyimpan Nama Pemesan
   const [customerName, setCustomerName] = useState("");
 
   const categories = ["Hot Coffee", "Iced Coffee", "Non Coffee"];
@@ -273,46 +269,59 @@ export default function CustomerOrderPage() {
     return total + item.price * (orderItems[item.id] || 0);
   }, 0);
 
-  // LOGIKA PENGIRIMAN PESANAN (Kini menyertakan Nama)
   const handleSubmitOrder = async () => {
     if (totalBarang === 0) return;
 
-    // Validasi Nama Pemesan
     if (!customerName.trim()) {
       alert(
         'Mohon isi "Nama Anda" terlebih dahulu agar barista kami mudah memanggil pesanan Anda! ☕',
       );
-
-      // Mengarahkan layar agar scroll kembali ke atas (ke kotak nama)
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    const detailPesanan = mockMenu
-      .filter((item) => orderItems[item.id] > 0)
+    const activeOrderedItems = mockMenu.filter(
+      (item) => orderItems[item.id] > 0,
+    );
+
+    const detailPesanan = activeOrderedItems
       .map((item) => `${orderItems[item.id]}x ${item.name}`)
       .join(" & ");
 
-    // Jalankan query Insert ke cloud database
-    const { error } = await supabase.from("orders").insert([
-      {
-        // Format Teks: "A/N [NAMA]: 2x Kopi ..."
-        description: `A/N [${customerName.toUpperCase()}] - ${detailPesanan}`,
-        type: "IN",
-        amount: totalHarga,
-      },
-    ]);
+    try {
+      // 1. Simpan Transaksi Finansial ke tabel 'orders'
+      const { error: orderError } = await supabase.from("orders").insert([
+        {
+          description: `A/N [${customerName.toUpperCase()}] - ${detailPesanan}`,
+          type: "IN",
+          amount: totalHarga,
+        },
+      ]);
 
-    if (error) {
-      alert(`Terjadi kesalahan saat mengirim pesanan: ${error.message}`);
-    } else {
+      if (orderError) throw orderError;
+
+      // 2. OTOMATISASI STOK: Pecah dan simpan tiap item ke tabel 'inventory_logs' sebagai stok keluar (OUT)
+      const inventoryPayload = activeOrderedItems.map((item) => ({
+        type: "OUT",
+        name: item.name,
+        qty: orderItems[item.id],
+        unit: "cup",
+        cost: 0,
+        note: `Terjual ke A/N [${customerName.toUpperCase()}]`,
+      }));
+
+      const { error: inventoryError } = await supabase
+        .from("inventory_logs")
+        .insert(inventoryPayload);
+      if (inventoryError) throw inventoryError;
+
       alert(
-        `Pesanan Berhasil!\n\nAtas Nama: ${customerName.toUpperCase()}\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}\n\nMohon tunggu panggilan dari Barista kami.`,
+        `Pesanan Berhasil!\n\nAtas Nama: ${customerName.toUpperCase()}\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}\n\nStok otomatis terpotong di database.`,
       );
-
-      // Kosongkan keranjang dan nama setelah sukses
       setOrderItems({});
       setCustomerName("");
+    } catch (err: any) {
+      alert(`Terjadi kesalahan sistem: ${err.message}`);
     }
   };
 
@@ -322,7 +331,6 @@ export default function CustomerOrderPage() {
 
   return (
     <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center">
-      {/* --- MODAL PREVIEW GAMBAR --- */}
       {previewImage && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
@@ -333,55 +341,47 @@ export default function CustomerOrderPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="absolute -top-14 md:-top-10 right-0 text-white hover:text-white transition-colors bg-black/40 p-2 rounded-full backdrop-blur-md"
+              className="absolute -top-14 right-0 text-white bg-black/40 p-2 rounded-full backdrop-blur-md"
               onClick={() => setPreviewImage(null)}
             >
               <X size={24} />
             </button>
             <img
               src={previewImage}
-              alt="Preview Menu"
+              alt="Preview"
               className="w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl border-2 border-white/20"
             />
           </div>
         </div>
       )}
 
-      {/* Kontainer Utama */}
       <div className="min-h-screen bg-black/30 pb-36 p-4 md:p-8 pt-6 md:pt-12">
         <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
-          <header className="flex flex-col items-center text-center space-y-4 md:space-y-6 mb-2 md:mb-6">
+          <header className="flex flex-col items-center text-center space-y-4 mb-2">
             <img
               src="/rockopi.png"
-              alt="Rockopi Est 2019"
-              className="w-28 h-28 md:w-40 md:h-40 object-cover rounded-full shadow-2xl border-[3px] md:border-4 border-[#1B4332] bg-transparent"
+              alt="Rockopi Logo"
+              className="w-28 h-28 md:w-40 md:h-40 object-cover rounded-full shadow-2xl border-[3px] border-[#1B4332]"
             />
-            <div className="drop-shadow-md flex flex-col items-center px-2">
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-white">
-                  Welcome to
-                </h1>
-                <img
-                  src="/logo.png"
-                  alt="Logo Text Rockopi"
-                  className="h-6 md:h-10 object-contain drop-shadow-xl"
-                />
-              </div>
-              <p className="text-gray-200 font-medium text-sm md:text-base">
+            <div className="drop-shadow-md flex flex-col items-center">
+              <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-white mb-1">
+                Welcome to Rockopi App
+              </h1>
+              <p className="text-gray-200 text-sm">
                 Pilih menu favoritmu, santai, dan nikmati harimu.
               </p>
             </div>
           </header>
 
-          {/* INPUT NAMA PEMESAN (FITUR BARU) */}
+          {/* INPUT NAMA */}
           <div className="w-full max-w-md mx-auto px-2">
-            <div className="bg-white/90 backdrop-blur-md p-4 md:p-5 rounded-2xl shadow-xl border-t-4 border-[#1B4332] flex flex-col gap-2">
+            <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border-t-4 border-[#1B4332] flex flex-col gap-2">
               <label
                 htmlFor="customerName"
-                className="text-sm md:text-base font-black text-gray-800 flex items-center gap-2"
+                className="text-sm font-black text-gray-800 flex items-center gap-2"
               >
-                <UserCircle2 size={18} className="text-[#1B4332]" />
-                Siapa Nama Anda?
+                <UserCircle2 size={18} className="text-[#1B4332]" /> Siapa Nama
+                Anda?
               </label>
               <input
                 id="customerName"
@@ -389,26 +389,23 @@ export default function CustomerOrderPage() {
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Contoh: Budi (Meja 4)"
-                className="w-full bg-gray-50 text-gray-900 font-bold px-4 py-3.5 rounded-xl border border-gray-300 focus:border-[#1B4332] focus:bg-white focus:ring-2 focus:ring-[#1B4332]/20 outline-none transition-all placeholder:font-normal placeholder:text-gray-400"
+                className="w-full bg-gray-50 text-gray-900 font-bold px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1B4332] focus:bg-white outline-none transition-all text-sm"
                 maxLength={25}
                 required
               />
-              <p className="text-[10px] md:text-xs text-gray-500 italic mt-1">
-                *Agar Barista mudah memanggil pesanan Anda
-              </p>
             </div>
           </div>
 
-          {/* TAB KATEGORI RESPONSIF */}
-          <div className="flex justify-start md:justify-center gap-3 mb-6 overflow-x-auto pb-4 pt-2 px-4 snap-x scrollbar-hide w-full">
+          {/* TAB KATEGORI */}
+          <div className="flex justify-start md:justify-center gap-3 overflow-x-auto pb-2 w-full">
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`flex-shrink-0 snap-center px-5 py-2.5 md:px-6 md:py-2.5 rounded-full font-bold text-sm md:text-base whitespace-nowrap transition-all duration-200 shadow-lg border border-white/10 ${
+                className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap border ${
                   activeCategory === category
-                    ? "bg-white text-[#1B4332] transform scale-105"
-                    : "bg-black/50 text-gray-200 hover:bg-black/70 backdrop-blur-md"
+                    ? "bg-white text-[#1B4332]"
+                    : "bg-black/50 text-gray-200"
                 }`}
               >
                 {category}
@@ -416,8 +413,8 @@ export default function CustomerOrderPage() {
             ))}
           </div>
 
-          {/* DAFTAR MENU */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+          {/* LIST MENU */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredMenu.map((item) => {
               const qty = orderItems[item.id] || 0;
               const isExpanded = expandedDesc[item.id];
@@ -426,60 +423,53 @@ export default function CustomerOrderPage() {
               return (
                 <div
                   key={item.id}
-                  className="bg-white rounded-2xl shadow-xl border-none overflow-hidden flex flex-col transition-transform active:scale-[0.98] md:hover:-translate-y-1 md:hover:shadow-2xl"
+                  className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
                 >
                   <div
-                    className="h-36 md:h-40 overflow-hidden bg-gray-100 relative group cursor-pointer"
+                    className="h-36 overflow-hidden bg-gray-100 relative cursor-pointer"
                     onClick={() => setPreviewImage(item.imageUrl)}
                   >
-                    <div className="absolute top-2 left-2 md:top-3 md:left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold text-[#1B4332] shadow-sm z-10">
-                      {item.category}
-                    </div>
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className="w-full h-full object-cover md:group-hover:scale-110 transition-transform duration-500"
+                      className="w-full h-full object-cover"
                     />
                   </div>
-
-                  <div className="p-4 md:p-5 flex-1 flex flex-col">
-                    <h3 className="font-bold text-base md:text-lg leading-tight mb-1 md:mb-2 text-[#1B4332]">
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h3 className="font-bold text-base text-[#1B4332] mb-1">
                       {item.name}
                     </h3>
-                    <div className="mb-4">
-                      <p
-                        className={`text-xs md:text-sm text-gray-600 whitespace-pre-line transition-all ${isExpanded ? "" : "line-clamp-2 md:line-clamp-3"}`}
+                    <p
+                      className={`text-xs text-gray-600 ${isExpanded ? "" : "line-clamp-2"}`}
+                    >
+                      {item.description}
+                    </p>
+                    {isLongText && (
+                      <button
+                        onClick={() => toggleDescription(item.id)}
+                        className="text-[10px] font-bold text-[#1B4332] mt-1 self-start"
                       >
-                        {item.description}
-                      </p>
-                      {isLongText && (
-                        <button
-                          onClick={() => toggleDescription(item.id)}
-                          className="text-[10px] md:text-xs font-bold text-[#1B4332] mt-1 md:mt-2 hover:text-green-700 transition-colors"
-                        >
-                          {isExpanded ? "Show less" : "Read more..."}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="mt-auto flex items-center justify-between pt-2 border-t border-gray-100">
-                      <span className="font-bold text-sm md:text-base text-gray-900">
+                        {isExpanded ? "Kurangi" : "Selengkapnya..."}
+                      </button>
+                    )}
+                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100">
+                      <span className="font-bold text-sm text-gray-900">
                         Rp {item.price.toLocaleString("id-ID")}
                       </span>
-                      <div className="flex items-center gap-1.5 md:gap-2 bg-gray-50 border border-gray-200 rounded-full p-1">
+                      <div className="flex items-center gap-2 bg-gray-50 border rounded-full p-1">
                         <button
                           onClick={() => handleDecrease(item.id)}
-                          className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white flex items-center justify-center text-gray-600 shadow-sm active:bg-gray-100 transition-colors"
+                          className="w-7 h-7 rounded-full bg-white flex items-center justify-center font-bold text-gray-600 shadow-sm"
                           disabled={qty === 0}
                         >
                           <Minus size={14} />
                         </button>
-                        <span className="w-4 text-center font-bold text-xs md:text-sm select-none">
+                        <span className="w-4 text-center font-bold text-xs">
                           {qty}
                         </span>
                         <button
                           onClick={() => handleIncrease(item.id)}
-                          className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#1B4332] flex items-center justify-center text-white shadow-sm active:bg-green-800 transition-colors"
+                          className="w-7 h-7 rounded-full bg-[#1B4332] flex items-center justify-center text-white shadow-sm"
                         >
                           <Plus size={14} />
                         </button>
@@ -493,34 +483,27 @@ export default function CustomerOrderPage() {
         </div>
       </div>
 
-      {/* FLOATING CHECKOUT BUTTON */}
+      {/* FLOATING BOTTON */}
       {totalBarang > 0 && (
-        <div className="fixed bottom-4 md:bottom-6 left-0 right-0 px-3 md:px-0 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-[#1B4332] text-white rounded-2xl p-3 md:p-4 shadow-2xl border border-green-800 flex items-center justify-between">
-              <div className="flex items-center gap-3 md:gap-4 ml-1">
-                <div className="relative">
-                  <ShoppingCart size={22} className="md:w-6 md:h-6" />
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] md:text-xs font-bold w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full shadow-sm">
-                    {totalBarang}
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] md:text-xs text-green-200 leading-tight">
-                    Total Harga
-                  </span>
-                  <span className="font-bold text-base md:text-lg leading-tight">
-                    Rp {totalHarga.toLocaleString("id-ID")}
-                  </span>
-                </div>
+        <div className="fixed bottom-4 left-0 right-0 px-4 z-50 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="max-w-4xl mx-auto bg-[#1B4332] text-white rounded-2xl p-3 shadow-2xl flex items-center justify-between">
+            <div className="flex items-center gap-3 ml-2">
+              <ShoppingCart size={22} />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-green-200">
+                  Total Harga ({totalBarang} item)
+                </span>
+                <span className="font-bold text-base">
+                  Rp {totalHarga.toLocaleString("id-ID")}
+                </span>
               </div>
-              <button
-                onClick={handleSubmitOrder}
-                className="flex items-center gap-1.5 md:gap-2 bg-white text-[#1B4332] px-4 py-2 md:px-6 md:py-2.5 rounded-xl text-sm md:text-base font-bold active:bg-gray-200 transition-transform active:scale-95 shadow-sm"
-              >
-                Pesan <Send size={16} className="md:w-[18px] md:h-[18px]" />
-              </button>
             </div>
+            <button
+              onClick={handleSubmitOrder}
+              className="bg-white text-[#1B4332] px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2"
+            >
+              Pesan <Send size={16} />
+            </button>
           </div>
         </div>
       )}
