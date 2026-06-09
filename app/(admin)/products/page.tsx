@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Store, Edit3, Save, X, RefreshCw } from "lucide-react";
-// Folder ini 3 tingkat ke dalam, jadi menggunakan ../../../
 import { supabase } from "../../../lib/supabase";
 import PoweredByFooter from "../../../components/PoweredByFooter";
 
@@ -55,7 +54,7 @@ export default function MasterProductsPage() {
 
       alert("Deskripsi menu berhasil diperbarui!");
       setEditingId(null);
-      fetchProducts(); // Refresh tabel admin
+      fetchProducts();
     } catch (err: any) {
       alert(`Gagal memperbarui deskripsi: ${err.message}`);
     } finally {
@@ -64,17 +63,18 @@ export default function MasterProductsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto flex flex-col min-h-[calc(100vh-4rem)] pb-12">
-      <header className="flex items-center justify-between gap-4 pt-4">
+    <div className="space-y-8 max-w-7xl mx-auto flex flex-col min-h-[calc(100vh-4rem)] pb-12 px-4 md:px-0">
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-white text-[#1B4332] rounded-lg shadow-sm border border-gray-100">
+          <div className="p-3 bg-white/20 backdrop-blur-md text-white rounded-lg shadow-sm border border-white/30">
             <Store size={24} />
           </div>
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 shadow-sm">
-              Master Produk Kafe
+            {/* WARNA TEKS DAN NAMA SUDAH DIPERBAIKI DI SINI */}
+            <h2 className="text-3xl font-bold text-white drop-shadow-md">
+              Master Produk Rockopi
             </h2>
-            <p className="text-gray-600 font-medium text-sm mt-0.5">
+            <p className="text-gray-200 font-medium text-sm mt-0.5 drop-shadow-sm">
               Kelola informasi menu dan sinkronisasikan langsung ke device
               pelanggan.
             </p>
@@ -82,13 +82,13 @@ export default function MasterProductsPage() {
         </div>
         <button
           onClick={fetchProducts}
-          className="p-2.5 bg-white border rounded-xl shadow-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 text-sm font-bold"
+          className="p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm text-[#1B4332] hover:bg-gray-50 flex items-center gap-2 text-sm font-bold transition-all active:scale-95"
         >
           <RefreshCw size={16} /> Refresh
         </button>
       </header>
 
-      <div className="bg-white rounded-3xl shadow-xl border overflow-hidden flex-1">
+      <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl border border-white/40 overflow-hidden flex-1">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead className="bg-[#1B4332] text-white">
@@ -96,9 +96,7 @@ export default function MasterProductsPage() {
                 <th className="p-4 font-bold w-32">Kategori</th>
                 <th className="p-4 font-bold w-48">Nama Menu</th>
                 <th className="p-4 font-bold w-32">Harga</th>
-                <th className="p-4 font-bold">
-                  Deskripsi Menu (Live di HP Pelanggan)
-                </th>
+                <th className="p-4 font-bold">Deskripsi Menu (Live di HP)</th>
                 <th className="p-4 font-bold text-center w-36">Aksi</th>
               </tr>
             </thead>
@@ -122,9 +120,9 @@ export default function MasterProductsPage() {
                 products.map((product) => (
                   <tr
                     key={product.id}
-                    className="border-b hover:bg-gray-50/50 transition-colors"
+                    className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors"
                   >
-                    <td className="p-4 text-sm font-bold text-gray-600">
+                    <td className="p-4 text-sm font-bold text-gray-500">
                       {product.category}
                     </td>
                     <td className="p-4 font-bold text-gray-900">
@@ -142,7 +140,7 @@ export default function MasterProductsPage() {
                           rows={3}
                         />
                       ) : (
-                        <p className="line-clamp-3 font-medium">
+                        <p className="line-clamp-3 font-medium leading-relaxed">
                           {product.description}
                         </p>
                       )}
@@ -153,14 +151,14 @@ export default function MasterProductsPage() {
                           <button
                             onClick={() => handleUpdateDescription(product.id)}
                             disabled={isSaving}
-                            className="p-2 bg-green-600 text-white rounded-xl shadow-md hover:bg-green-700 flex items-center justify-center"
+                            className="p-2.5 bg-green-600 text-white rounded-xl shadow-md hover:bg-green-700 flex items-center justify-center transition-colors active:scale-95"
                             title="Simpan Deskripsi"
                           >
                             <Save size={16} />
                           </button>
                           <button
                             onClick={() => setEditingId(null)}
-                            className="p-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 flex items-center justify-center"
+                            className="p-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 flex items-center justify-center transition-colors active:scale-95"
                             title="Batal"
                           >
                             <X size={16} />
@@ -171,9 +169,9 @@ export default function MasterProductsPage() {
                           onClick={() =>
                             startEditing(product.id, product.description)
                           }
-                          className="px-3 py-1.5 bg-white border border-gray-200 text-[#1B4332] rounded-xl font-bold text-xs shadow-sm hover:bg-gray-50 flex items-center gap-1.5 mx-auto"
+                          className="px-3 py-2 bg-white border border-gray-200 text-[#1B4332] rounded-xl font-bold text-xs shadow-sm hover:bg-gray-50 flex items-center gap-1.5 mx-auto transition-all active:scale-95"
                         >
-                          <Edit3 size={12} /> Edit Deskripsi
+                          <Edit3 size={14} /> Edit
                         </button>
                       )}
                     </td>
@@ -184,7 +182,6 @@ export default function MasterProductsPage() {
           </table>
         </div>
       </div>
-
       <PoweredByFooter />
     </div>
   );
