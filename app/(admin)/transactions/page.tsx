@@ -1,217 +1,230 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../../../lib/supabase";
 import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Save,
-  PackagePlus,
+  ReceiptText,
+  Search,
+  Filter,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Loader2,
 } from "lucide-react";
+import PoweredByFooter from "../../../components/PoweredByFooter";
+
+export const dynamic = "force-dynamic";
 
 export default function TransactionsPage() {
-  const [type, setType] = useState<"IN" | "OUT">("IN");
-  const [itemName, setItemName] = useState("");
-  const [qty, setQty] = useState("");
-  const [unit, setUnit] = useState("pcs");
-  const [cost, setCost] = useState("");
-  const [note, setNote] = useState("");
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // State untuk Filter & Pencarian
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("ALL"); // ALL, PAID, PENDING
 
-    if (!itemName || !qty) {
-      alert("Nama barang dan jumlah wajib diisi!");
-      return;
+  const fetchTransactions = async () => {
+    setIsLoading(true);
+    try {
+      // Mengambil seluruh riwayat dari awal
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setTransactions(data || []);
+    } catch (err: any) {
+      console.error("Gagal memuat transaksi:", err.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    const timestamp = new Date().toISOString();
-
-    // 1. BUAT DATA LOG STOK UNTUK RIWAYAT
-    const newLog = {
-      id: Date.now(),
-      date: timestamp,
-      type: type, // 'IN' (Masuk) atau 'OUT' (Keluar)
-      name: itemName,
-      qty: Number(qty),
-      unit: unit,
-      cost: type === "IN" ? Number(cost) : 0,
-      note:
-        note || (type === "IN" ? "Restock Bahan Baku" : "Pemakaian / Keluar"),
-    };
-
-    // Ambil data riwayat lama, tambahkan yang baru, simpan lagi
-    const existingLogs = JSON.parse(
-      localStorage.getItem("rockopi_inventory_logs") || "[]",
-    );
-    localStorage.setItem(
-      "rockopi_inventory_logs",
-      JSON.stringify([newLog, ...existingLogs]),
-    );
-
-    // 2. INTEGRASI OTOMATIS KE PEMBUKUAN (KHUSUS BARANG MASUK / BELANJA)
-    if (type === "IN" && Number(cost) > 0) {
-      const expenseData = {
-        id: Date.now() + 1, // Beda 1 milidetik agar ID unik
-        date: timestamp,
-        desc: `Belanja Stok: ${itemName} (${qty} ${unit})`,
-        type: "OUT", // Di Pembukuan, belanja adalah 'OUT' (Pengeluaran)
-        amount: Number(cost),
-      };
-
-      const existingFinance = JSON.parse(
-        localStorage.getItem("rockopi_orders") || "[]",
-      );
-      localStorage.setItem(
-        "rockopi_orders",
-        JSON.stringify([expenseData, ...existingFinance]),
-      );
-    }
-
-    alert(
-      `Berhasil!\nStok ${type === "IN" ? "Masuk" : "Keluar"} untuk "${itemName}" telah dicatat di Riwayat.`,
-    );
-
-    // Reset Form
-    setItemName("");
-    setQty("");
-    setCost("");
-    setNote("");
   };
 
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  // Logika Filter & Pencarian di sisi Client
+  const filteredTransactions = transactions.filter((tx) => {
+    const matchSearch = tx.description
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchStatus =
+      filterStatus === "ALL" ? true : tx.status === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <header className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-white/80 backdrop-blur-sm text-[#1B4332] rounded-lg shadow-sm border border-white/50">
-          <PackagePlus size={24} />
-        </div>
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 drop-shadow-sm">
-            In/Out Stok
-          </h2>
-          <p className="text-gray-700 font-medium">
-            Catat pergerakan bahan baku secara manual.
-          </p>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center flex flex-col text-white font-sans">
+      <div className="flex-1 bg-black/50 backdrop-blur-sm p-4 md:p-8 pt-6 flex flex-col">
+        <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col space-y-6 pb-10">
+          {/* HEADER ESTETIK */}
+          <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-4">
+            <div>
+              <h2 className="text-3xl font-black drop-shadow-lg flex items-center gap-3 text-white">
+                Riwayat Transaksi
+              </h2>
+              <p className="text-gray-200 font-medium mt-1 drop-shadow-md">
+                Pusat data seluruh riwayat pesanan dan mutasi Rockopi.
+              </p>
+            </div>
 
-      <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/60 overflow-hidden">
-        {/* TOGGLE IN / OUT */}
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setType("IN")}
-            className={`flex-1 py-4 flex items-center justify-center gap-2 font-bold transition-colors ${type === "IN" ? "bg-green-50 text-green-700 border-b-2 border-green-600" : "text-gray-500 hover:bg-gray-50"}`}
-          >
-            <ArrowDownCircle size={20} /> Barang Masuk (Belanja)
-          </button>
-          <button
-            onClick={() => setType("OUT")}
-            className={`flex-1 py-4 flex items-center justify-center gap-2 font-bold transition-colors ${type === "OUT" ? "bg-red-50 text-red-700 border-b-2 border-red-600" : "text-gray-500 hover:bg-gray-50"}`}
-          >
-            <ArrowUpCircle size={20} /> Barang Keluar (Terpakai)
-          </button>
-        </div>
+            {/* TOTAL DATA BADGE */}
+            <div className="bg-white/10 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-2xl border border-white/25 flex items-center gap-3">
+              <ReceiptText className="text-blue-300" size={20} />
+              <span className="font-bold text-sm tracking-wide">
+                {filteredTransactions.length} Transaksi
+              </span>
+            </div>
+          </header>
 
-        {/* FORM INPUT MANUAL */}
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
-          <div className="bg-blue-50/50 text-blue-800 p-4 rounded-xl text-sm border border-blue-100 flex items-start gap-3">
-            <span className="text-xl">💡</span>
-            <p>
-              {type === "IN"
-                ? "Catat bahan baku yang baru dibeli (Contoh: Susu UHT, Es Batu, Galon, Gula Aren). Jika Anda mengisi Total Harga, sistem akan otomatis memasukkannya sebagai Pengeluaran di menu Pembukuan!"
-                : "Catat bahan baku yang terpakai, rusak, atau kadaluarsa."}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">
-                Nama Barang (Bahan Baku)
-              </label>
+          {/* KONTROL PENCARIAN & FILTER (GLASSMORPHISM) */}
+          <div className="bg-white/10 backdrop-blur-xl p-4 rounded-3xl border border-white/20 flex flex-col sm:flex-row items-center gap-4 shadow-xl">
+            <div className="relative flex-1 w-full">
+              <Search
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+                size={18}
+              />
               <input
                 type="text"
-                required
-                value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
-                placeholder="Contoh: Susu UHT Diamond"
-                className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#1B4332] outline-none bg-white/50"
+                placeholder="Cari nama pelanggan atau menu..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-black/40 text-white font-medium pl-11 pr-4 py-3 rounded-2xl border border-white/10 focus:border-blue-400 outline-none transition-all placeholder-gray-400"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">
-                Jumlah & Satuan
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={qty}
-                  onChange={(e) => setQty(e.target.value)}
-                  placeholder="0"
-                  className="w-2/3 p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#1B4332] outline-none bg-white/50"
-                />
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="w-1/3 p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#1B4332] outline-none bg-white/50 font-medium"
-                >
-                  <option value="pcs">Pcs</option>
-                  <option value="liter">Liter</option>
-                  <option value="kg">Kg</option>
-                  <option value="gram">Gram</option>
-                  <option value="galon">Galon</option>
-                  <option value="pack">Pack</option>
-                  <option value="karung">Karung</option>
-                </select>
-              </div>
-            </div>
-
-            {type === "IN" && (
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">
-                  Total Harga Beli (Rp) - Opsional
-                </label>
-                <input
-                  type="number"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  placeholder="Contoh: 150000"
-                  className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#1B4332] outline-none bg-white/50"
-                />
-              </div>
-            )}
-
-            <div
-              className={`space-y-2 ${type === "OUT" ? "md:col-span-2" : ""}`}
-            >
-              <label className="text-sm font-bold text-gray-700">
-                Keterangan (Opsional)
-              </label>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={
-                  type === "IN"
-                    ? "Contoh: Beli di Indomaret"
-                    : "Contoh: Tumpah / Expired / Terpakai shift pagi"
-                }
-                className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#1B4332] outline-none bg-white/50"
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+              <Filter className="text-gray-300 ml-2" size={18} />
+              <button
+                onClick={() => setFilterStatus("ALL")}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${filterStatus === "ALL" ? "bg-blue-500 text-white shadow-lg" : "bg-white/10 text-gray-300 hover:bg-white/20"}`}
+              >
+                Semua
+              </button>
+              <button
+                onClick={() => setFilterStatus("PAID")}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${filterStatus === "PAID" ? "bg-green-500 text-white shadow-lg" : "bg-white/10 text-gray-300 hover:bg-white/20"}`}
+              >
+                Lunas
+              </button>
+              <button
+                onClick={() => setFilterStatus("PENDING")}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${filterStatus === "PENDING" ? "bg-yellow-500 text-black shadow-lg" : "bg-white/10 text-gray-300 hover:bg-white/20"}`}
+              >
+                Belum Bayar
+              </button>
             </div>
           </div>
 
-          <div className="pt-4">
-            <button
-              type="submit"
-              className={`w-full py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${type === "IN" ? "bg-[#1B4332] hover:bg-green-900" : "bg-red-600 hover:bg-red-700"}`}
-            >
-              <Save size={20} />
-              Simpan Data {type === "IN" ? "Barang Masuk" : "Barang Keluar"}
-            </button>
+          {/* TABEL DATA TRANSAKSI */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 overflow-hidden flex-1 text-gray-900 flex flex-col">
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead className="bg-[#1B4332] text-white sticky top-0 z-10">
+                  <tr className="text-sm">
+                    <th className="p-4 w-40 font-bold tracking-wide">
+                      Tanggal & Waktu
+                    </th>
+                    <th className="p-4 font-bold tracking-wide">
+                      Detail Transaksi
+                    </th>
+                    <th className="p-4 w-32 font-bold tracking-wide text-center">
+                      Status
+                    </th>
+                    <th className="p-4 w-36 font-bold tracking-wide text-right">
+                      Total (Rp)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={4} className="p-20 text-center">
+                        <Loader2
+                          className="animate-spin mx-auto text-[#1B4332]"
+                          size={32}
+                        />
+                      </td>
+                    </tr>
+                  ) : filteredTransactions.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="p-16 text-center text-gray-500 font-medium"
+                      >
+                        Tidak ada transaksi yang sesuai kriteria pencarian.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTransactions.map((tx) => {
+                      const isIncome = tx.type === "IN";
+                      const isPaid = tx.status === "PAID";
+
+                      return (
+                        <tr
+                          key={tx.id}
+                          className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors"
+                        >
+                          <td className="p-4 text-gray-500 font-bold whitespace-nowrap">
+                            {new Date(tx.created_at).toLocaleDateString(
+                              "id-ID",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}{" "}
+                            <br />
+                            <span className="text-xs text-gray-400 font-normal">
+                              {new Date(tx.created_at).toLocaleTimeString(
+                                "id-ID",
+                                { hour: "2-digit", minute: "2-digit" },
+                              )}
+                            </span>
+                          </td>
+
+                          <td className="p-4">
+                            <p className="font-bold text-gray-900">
+                              {tx.description}
+                            </p>
+                            <span
+                              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full mt-1 inline-block ${isIncome ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}
+                            >
+                              {isIncome ? "Pemasukan" : "Pengeluaran"}
+                            </span>
+                          </td>
+
+                          <td className="p-4 text-center">
+                            {isPaid ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-200">
+                                <CheckCircle size={14} /> LUNAS
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full border border-yellow-200">
+                                <Clock size={14} /> PENDING
+                              </span>
+                            )}
+                          </td>
+
+                          <td
+                            className={`p-4 text-right font-black text-base whitespace-nowrap ${isIncome ? "text-[#1B4332]" : "text-red-600"}`}
+                          >
+                            {isIncome ? "+" : "-"}{" "}
+                            {Number(tx.amount).toLocaleString("id-ID")}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </form>
+
+          <PoweredByFooter />
+        </div>
       </div>
     </div>
   );

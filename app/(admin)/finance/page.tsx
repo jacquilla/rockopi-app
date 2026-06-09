@@ -1,384 +1,342 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { supabase } from "../../../lib/supabase"; // 3 titik karena berada di dalam subfolder finance
 import {
-  Wallet,
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Calendar as CalendarIcon,
-  SearchX,
-  BarChart3,
-  Award,
+  PlusCircle,
+  Trash2,
+  Loader2,
+  Calendar,
+  FileText,
 } from "lucide-react";
+import PoweredByFooter from "../../../components/PoweredByFooter";
 
-export default function FinanceUI() {
-  const [isClient, setIsClient] = useState(false);
-  const [allTransactions, setAllTransactions] = useState<any[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>("");
+export const dynamic = "force-dynamic";
 
-  // STATE BARU UNTUK TAB LAPORAN ANALISIS
-  const [reportTab, setReportTab] = useState<"MINGGUAN" | "BULANAN">(
-    "MINGGUAN",
-  );
+export default function FinancePage() {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [stats, setStats] = useState({ omset: 0, expense: 0, net: 0 });
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Helper: Format Date ke YYYY-MM-DD
-  const getLocalDateString = (dateObj: Date) => {
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-    const day = String(dateObj.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+  // Form State untuk Input Pengeluaran Manual
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchFinanceData = async () => {
+    setIsLoading(true);
+    try {
+      // Ambil seluruh data transaksi orders hari ini
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .gte("created_at", startOfDay.toISOString())
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // LOGIKA KUNCI:
+      // 1. Jika Pemasukan (IN), WAJIB yang berstatus 'PAID' (Sudah Bayar)
+      // 2. Jika Pengeluaran (OUT), langsung dimasukkan tanpa syarat status
+      const validTransactions = (data || []).filter((item: any) => {
+        if (item.type === "IN" && item.status !== "PAID") return false;
+        return true;
+      });
+
+      setTransactions(validTransactions);
+
+      // Hitung kalkulasi keuangan harian
+      let totalOmset = 0;
+      let totalExpense = 0;
+
+      validTransactions.forEach((item: any) => {
+        if (item.type === "IN") {
+          totalOmset += Number(item.amount);
+        } else if (item.type === "OUT") {
+          totalExpense += Number(item.amount);
+        }
+      });
+
+      setStats({
+        omset: totalOmset,
+        expense: totalExpense,
+        net: totalOmset - totalExpense,
+      });
+    } catch (err: any) {
+      console.error("Gagal memuat pembukuan:", err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    setIsClient(true);
-    setSelectedDate(getLocalDateString(new Date()));
+    fetchFinanceData();
 
-    const loadFinanceData = () => {
-      const savedTransactions = JSON.parse(
-        localStorage.getItem("rockopi_orders") || "[]",
-      );
-      setAllTransactions(savedTransactions);
+    // Sinkronisasi Real-time Pembukuan saat kasir menekan tombol lunas
+    const realtimeSubscription = supabase
+      .channel("finance-live-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          fetchFinanceData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(realtimeSubscription);
     };
-
-    loadFinanceData();
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "rockopi_orders") loadFinanceData();
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  if (!isClient) return null;
+  // Tambah Pengeluaran Toko Manual (Beli susu, biji kopi, cup, dll)
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim() || !amount) return;
+    setIsSaving(true);
 
-  // --- 1. LOGIKA HARIAN (Sesuai Kalender) ---
-  const filteredDaily = allTransactions.filter(
-    (trx: any) => getLocalDateString(new Date(trx.date)) === selectedDate,
-  );
+    try {
+      const { error } = await supabase.from("orders").insert([
+        {
+          description: `[PENGELUARAN] - ${description}`,
+          type: "OUT",
+          amount: Number(amount),
+          status: "PAID", // Pengeluaran langsung dianggap lunas terbayar
+        },
+      ]);
 
-  const dailySummary = filteredDaily.reduce(
-    (acc, trx) => {
-      if (trx.type === "IN") {
-        acc.income += trx.amount;
-        acc.net += trx.amount;
-      } else if (trx.type === "OUT") {
-        acc.expense += trx.amount;
-        acc.net -= trx.amount;
-      }
-      return acc;
-    },
-    { income: 0, expense: 0, net: 0 },
-  );
+      if (error) throw error;
 
-  // --- 2. LOGIKA LAPORAN MINGGUAN & BULANAN (Analisis Item Laku) ---
-  const selectedDateObj = new Date(selectedDate);
-
-  // Filter transaksi untuk Mingguan (7 hari ke belakang dari kalender)
-  const past7Days = new Date(selectedDateObj);
-  past7Days.setDate(past7Days.getDate() - 6);
-
-  // Filter transaksi untuk Bulanan (Bulan dan Tahun yang sama dengan kalender)
-  const currentMonth = selectedDateObj.getMonth();
-  const currentYear = selectedDateObj.getFullYear();
-
-  const reportTransactions = allTransactions.filter((trx: any) => {
-    const trxDate = new Date(trx.date);
-    if (reportTab === "MINGGUAN") {
-      return (
-        trxDate >= past7Days &&
-        trxDate <= new Date(selectedDateObj.setHours(23, 59, 59))
-      );
-    } else {
-      return (
-        trxDate.getMonth() === currentMonth &&
-        trxDate.getFullYear() === currentYear
-      );
+      alert("Catatan pengeluaran berhasil disimpan!");
+      setDescription("");
+      setAmount("");
+      fetchFinanceData();
+    } catch (err: any) {
+      alert(`Gagal menyimpan: ${err.message}`);
+    } finally {
+      setIsSaving(false);
     }
-  });
+  };
 
-  // Hitung Total Pendapatan Khusus Penjualan di periode tersebut
-  const reportIncome = reportTransactions
-    .filter((trx) => trx.type === "IN")
-    .reduce((sum, trx) => sum + trx.amount, 0);
-
-  // Ekstrak dan Hitung Menu Paling Laku (Best Sellers)
-  const itemCounts: Record<string, number> = {};
-  reportTransactions.forEach((trx) => {
-    if (trx.type === "IN" && trx.desc.includes("Pesanan Pelanggan")) {
-      // Menghilangkan awalan teks
-      const cleanDesc = trx.desc.replace("Pesanan Pelanggan: ", "");
-      // Memisahkan per item (contoh: "2x Hot Rockopi & 1x Iced Matcha")
-      const items = cleanDesc.split(" & ");
-
-      items.forEach((item: string) => {
-        // Mencari pola Angka + 'x' + Nama Item (Contoh: "2x Hot Rockopi")
-        const match = item.match(/(\d+)x\s+(.+)/);
-        if (match) {
-          const qty = parseInt(match[1]);
-          const name = match[2];
-          itemCounts[name] = (itemCounts[name] || 0) + qty;
-        }
-      });
+  const handleDeleteTransaction = async (id: number) => {
+    if (window.confirm("Hapus catatan pembukuan ini?")) {
+      await supabase.from("orders").delete().eq("id", id);
+      fetchFinanceData();
     }
-  });
-
-  // Urutkan dari yang paling laku ke yang tidak laku
-  const bestSellers = Object.entries(itemCounts)
-    .map(([name, qty]) => ({ name, qty }))
-    .sort((a, b) => b.qty - a.qty);
-
-  // Mencari nilai tertinggi untuk membuat grafik proporsional
-  const maxQty = bestSellers.length > 0 ? bestSellers[0].qty : 1;
+  };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      {/* HEADER & KALENDER HARIAN */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <header className="flex items-center gap-3">
-          <div className="p-3 bg-white/80 backdrop-blur-sm text-[#1B4332] rounded-lg shadow-sm border border-white/50">
-            <Wallet size={24} />
-          </div>
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 drop-shadow-sm">
-              Pembukuan
-            </h2>
-            <p className="text-gray-700 font-medium">
-              Laporan arus kas dan analisis penjualan.
-            </p>
-          </div>
-        </header>
-
-        <div className="flex items-center gap-3 bg-white/70 backdrop-blur-md rounded-xl p-2 shadow-sm border border-white/60">
-          <div className="bg-[#1B4332] text-white p-2 rounded-lg">
-            <CalendarIcon size={18} />
-          </div>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent border-none outline-none font-bold text-gray-800 cursor-pointer text-sm pr-2"
-          />
-        </div>
-      </div>
-
-      {/* ========================================================= */}
-      {/* 1. SEKSI HARIAN (Sesuai Kalender)                           */}
-      {/* ========================================================= */}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-lg border border-white/50 relative overflow-hidden transition-all duration-300">
-          <div className="absolute top-0 right-0 p-4 opacity-10 text-green-600">
-            <TrendingUp size={64} />
-          </div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-              <TrendingUp size={16} />
-            </div>
-            <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider">
-              Pemasukan Harian
-            </h3>
-          </div>
-          <p className="text-3xl font-bold text-gray-900 mt-2">
-            Rp {dailySummary.income.toLocaleString("id-ID")}
-          </p>
-        </div>
-
-        <div className="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-lg border border-white/50 relative overflow-hidden transition-all duration-300">
-          <div className="absolute top-0 right-0 p-4 opacity-10 text-red-600">
-            <TrendingDown size={64} />
-          </div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-              <TrendingDown size={16} />
-            </div>
-            <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider">
-              Pengeluaran Harian
-            </h3>
-          </div>
-          <p className="text-3xl font-bold text-gray-900 mt-2">
-            Rp {dailySummary.expense.toLocaleString("id-ID")}
-          </p>
-        </div>
-
-        <div
-          className={`backdrop-blur-lg p-6 rounded-2xl shadow-xl relative overflow-hidden text-white transition-all duration-500 ${dailySummary.net >= 0 ? "bg-[#1B4332]/90 border-green-800" : "bg-red-800/90 border-red-900"}`}
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-20 text-white">
-            <DollarSign size={64} />
-          </div>
-          <div className="flex items-center gap-3 mb-2">
-            <div
-              className={`w-8 h-8 rounded-full bg-black/30 border flex items-center justify-center ${dailySummary.net >= 0 ? "border-green-700 text-green-300" : "border-red-700 text-red-300"}`}
-            >
-              <DollarSign size={16} />
-            </div>
-            <h3
-              className={`text-sm font-bold uppercase tracking-wider ${dailySummary.net >= 0 ? "text-green-100" : "text-red-100"}`}
-            >
-              Laba Bersih Harian
-            </h3>
-          </div>
-          <p className="text-3xl font-bold text-white mt-2 drop-shadow-md">
-            {dailySummary.net < 0 ? "-" : ""} Rp{" "}
-            {Math.abs(dailySummary.net).toLocaleString("id-ID")}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg border border-white/60 overflow-hidden mb-12">
-        <div className="p-5 border-b border-gray-200/60 bg-gray-50/50">
-          <h3 className="text-lg font-bold text-gray-900">
-            Rincian Arus Kas ({selectedDate})
-          </h3>
-        </div>
-
-        {filteredDaily.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            <SearchX size={40} className="mx-auto mb-3 opacity-20" />
-            <p className="font-bold text-gray-700">
-              Tidak Ada Transaksi Harian
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-h-[300px]">
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead className="bg-gray-100/50 sticky top-0">
-                <tr className="border-b border-gray-200/60 text-sm text-gray-600">
-                  <th className="p-4 font-bold">Waktu</th>
-                  <th className="p-4 font-bold">Keterangan Transaksi</th>
-                  <th className="p-4 font-bold text-right">Nominal (Rp)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDaily.map((trx: any) => (
-                  <tr
-                    key={trx.id}
-                    className="border-b border-gray-100/50 hover:bg-white/60"
-                  >
-                    <td className="p-4 text-sm text-gray-500">
-                      {new Date(trx.date).toLocaleTimeString("id-ID", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td
-                      className={`p-4 font-bold ${trx.desc.includes("Pesanan Pelanggan") ? "text-[#1B4332]" : "text-red-700"}`}
-                    >
-                      {trx.desc.replace("Pesanan Pelanggan: ", "")}
-                    </td>
-                    <td
-                      className={`p-4 text-right font-bold whitespace-nowrap ${trx.type === "IN" ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {trx.type === "IN" ? "+" : "-"}{" "}
-                      {trx.amount.toLocaleString("id-ID")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================= */}
-      {/* 2. SEKSI LAPORAN & ANALISIS BEST SELLER (Mingguan/Bulanan)*/}
-      {/* ========================================================= */}
-
-      <div className="mt-12 bg-[#1B4332]/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-green-800 overflow-hidden text-white">
-        {/* Header Laporan */}
-        <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-green-800/50 bg-black/20">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/10 rounded-xl border border-white/20">
-              <BarChart3 size={28} className="text-green-300" />
-            </div>
+    <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center flex flex-col text-white font-sans">
+      <div className="flex-1 bg-black/50 backdrop-blur-sm p-4 md:p-8 pt-6 flex flex-col">
+        <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col space-y-8 pb-10">
+          {/* HEADER SERAGAM DENGAN DASHBOARD */}
+          <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                Analisis Penjualan Menu
+              <h2 className="text-3xl font-black drop-shadow-lg flex items-center gap-3 text-white">
+                Pembukuan Keuangan Rockopi
               </h2>
-              <p className="text-green-200 text-sm font-medium mt-1">
-                Pantau tren dan performa produk terlaris Anda.
+              <p className="text-gray-200 font-medium mt-1 drop-shadow-md">
+                Laporan finansial otomatis dari transaksi pesanan lunas harian.
+              </p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-2xl border border-white/25 flex items-center gap-3">
+              <Calendar className="text-green-300" size={20} />
+              <span className="font-bold text-sm tracking-wide">Hari Ini</span>
+            </div>
+          </header>
+
+          {/* KARTU STATISTIK GLASSMORPHISM SERAGAM */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 text-gray-900">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                  <TrendingUp size={18} />
+                </div>
+                <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider">
+                  Total Omset (PAID)
+                </h3>
+              </div>
+              <p className="text-3xl font-black text-[#1B4332]">
+                Rp {stats.omset.toLocaleString("id-ID")}
+              </p>
+            </div>
+
+            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 text-gray-900">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                  <TrendingDown size={18} />
+                </div>
+                <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider">
+                  Total Pengeluaran
+                </h3>
+              </div>
+              <p className="text-3xl font-black text-red-600">
+                Rp {stats.expense.toLocaleString("id-ID")}
+              </p>
+            </div>
+
+            <div
+              className={`p-6 rounded-3xl shadow-2xl border border-white/20 backdrop-blur-xl text-white ${stats.net >= 0 ? "bg-gradient-to-br from-[#1B4332]/95 to-[#0d261b]/95" : "bg-red-900/95"}`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white">
+                  <DollarSign size={18} />
+                </div>
+                <h3 className="text-xs font-bold text-green-200 uppercase tracking-wider">
+                  Laba Bersih Hari Ini
+                </h3>
+              </div>
+              <p className="text-3xl font-black drop-shadow-md">
+                {stats.net < 0 ? "-" : ""} Rp{" "}
+                {Math.abs(stats.net).toLocaleString("id-ID")}
               </p>
             </div>
           </div>
 
-          {/* Toggle Tab Mingguan / Bulanan */}
-          <div className="flex bg-black/40 rounded-xl p-1.5 border border-white/10 shadow-inner">
-            <button
-              onClick={() => setReportTab("MINGGUAN")}
-              className={`px-5 py-2 rounded-lg font-bold text-sm transition-all duration-300 ${reportTab === "MINGGUAN" ? "bg-white text-[#1B4332] shadow-md" : "text-gray-300 hover:text-white"}`}
-            >
-              7 Hari Terakhir
-            </button>
-            <button
-              onClick={() => setReportTab("BULANAN")}
-              className={`px-5 py-2 rounded-lg font-bold text-sm transition-all duration-300 ${reportTab === "BULANAN" ? "bg-white text-[#1B4332] shadow-md" : "text-gray-300 hover:text-white"}`}
-            >
-              Bulan Ini
-            </button>
-          </div>
-        </div>
-
-        {/* Konten Laporan */}
-        <div className="p-6 md:p-8">
-          <div className="mb-8">
-            <p className="text-green-200/80 text-sm uppercase tracking-widest font-bold mb-1">
-              Total Omset Penjualan Kopi{" "}
-              {reportTab === "MINGGUAN" ? "(7 Hari)" : "(Bulan Ini)"}
-            </p>
-            <h3 className="text-4xl md:text-5xl font-extrabold drop-shadow-lg">
-              Rp {reportIncome.toLocaleString("id-ID")}
-            </h3>
-          </div>
-
-          <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-            <h4 className="flex items-center gap-2 font-bold text-lg mb-6 border-b border-white/10 pb-4">
-              <Award className="text-yellow-400" size={20} /> Peringkat Menu
-              Paling Laku (Best Sellers)
-            </h4>
-
-            {bestSellers.length === 0 ? (
-              <p className="text-gray-400 text-center py-6 italic">
-                Belum ada data penjualan pada periode ini.
-              </p>
-            ) : (
-              <div className="space-y-5 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                {bestSellers.map((item, index) => {
-                  // Hitung persentase untuk panjang bar grafik (minimal 5% agar bar tetap terlihat)
-                  const percentage = Math.max((item.qty / maxQty) * 100, 5);
-                  const isTop3 = index < 3;
-
-                  return (
-                    <div key={item.name} className="relative">
-                      <div className="flex justify-between items-end mb-1.5">
-                        <span
-                          className={`font-bold text-sm flex items-center gap-2 ${isTop3 ? "text-white" : "text-green-100"}`}
-                        >
-                          {isTop3 && (
-                            <span className="text-yellow-400 font-black text-xs">
-                              #{index + 1}
-                            </span>
-                          )}
-                          {item.name}
-                        </span>
-                        <span className="font-bold text-sm bg-white/10 px-2 py-0.5 rounded text-green-200">
-                          {item.qty} Cup
-                        </span>
-                      </div>
-
-                      {/* Grafik Batang Visual */}
-                      <div className="w-full bg-black/40 rounded-full h-3 overflow-hidden shadow-inner flex">
-                        <div
-                          className={`h-full rounded-full transition-all duration-1000 ease-out ${isTop3 ? "bg-gradient-to-r from-green-400 to-yellow-400" : "bg-green-500/60"}`}
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* TABEL MUTASI KEUANGAN LIVE */}
+            <div className="lg:col-span-2 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/40 text-gray-900 flex flex-col">
+              <div className="border-b border-gray-100 p-5 flex items-center justify-between bg-white/50">
+                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                  <FileText size={20} className="text-[#1B4332]" /> Arus Kas
+                  Masuk & Keluar
+                </h3>
+                <span className="text-xs font-bold text-gray-500 bg-white border px-3 py-1 rounded-full shadow-sm">
+                  {transactions.length} Entri Tercatat
+                </span>
               </div>
-            )}
+
+              <div className="max-h-[500px] overflow-y-auto">
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center p-20 gap-2">
+                    <Loader2
+                      className="animate-spin text-[#1B4332]"
+                      size={28}
+                    />
+                    <p className="text-xs font-bold text-gray-500">
+                      Membuka lembar buku kas...
+                    </p>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="p-16 text-center text-gray-400 font-medium">
+                    Belum ada mutasi keuangan tunai hari ini.
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50/80 border-b border-gray-100 sticky top-0 backdrop-blur-md text-xs font-bold text-gray-500">
+                      <tr>
+                        <th className="p-4 w-24">Waktu</th>
+                        <th className="p-4">Keterangan</th>
+                        <th className="p-4 text-right w-36">Jumlah</th>
+                        <th className="p-4 text-center w-16">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm">
+                      {transactions.map((tx) => {
+                        const isIncome = tx.type === "IN";
+                        return (
+                          <tr
+                            key={tx.id}
+                            className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors bg-transparent"
+                          >
+                            <td className="p-4 text-gray-500 font-bold">
+                              {new Date(tx.created_at).toLocaleTimeString(
+                                "id-ID",
+                                { hour: "2-digit", minute: "2-digit" },
+                              )}
+                            </td>
+                            <td className="p-4">
+                              <p className="font-bold text-gray-800 leading-tight">
+                                {tx.description}
+                              </p>
+                            </td>
+                            <td
+                              className={`p-4 text-right font-black text-base whitespace-nowrap ${isIncome ? "text-[#1B4332]" : "text-red-600"}`}
+                            >
+                              {isIncome ? "+" : "-"} Rp{" "}
+                              {Number(tx.amount).toLocaleString("id-ID")}
+                            </td>
+                            <td className="p-4 text-center">
+                              <button
+                                onClick={() => handleDeleteTransaction(tx.id)}
+                                className="p-2 text-gray-400 hover:text-red-500 rounded-full transition-colors"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* INPUT PENGELUARAN TOKO MANUAL */}
+            <div className="bg-black/80 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border border-white/20 text-white">
+              <h3 className="font-black text-lg mb-1 tracking-wide">
+                Input Pengeluaran
+              </h3>
+              <p className="text-xs text-gray-300 mb-5">
+                Catat pengeluaran mendadak toko (operasional, susu, es, dll).
+              </p>
+
+              <form onSubmit={handleAddExpense} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-300">
+                    Keterangan Biaya
+                  </label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Contoh: Beli Susu Diamond 2 Karton"
+                    className="w-full bg-white/10 text-white font-bold px-4 py-3 rounded-xl border border-white/10 focus:border-green-400 outline-none transition-all text-sm"
+                    maxLength={50}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-300">
+                    Jumlah Uang (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="Contoh: 320000"
+                    className="w-full bg-white/10 text-white font-bold px-4 py-3 rounded-xl border border-white/10 focus:border-green-400 outline-none transition-all text-sm"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="w-full bg-white hover:bg-gray-100 text-[#1B4332] font-black py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 text-sm mt-2"
+                >
+                  {isSaving ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    <PlusCircle size={18} />
+                  )}
+                  Simpan Pengeluaran
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="pt-4">
+            <PoweredByFooter />
           </div>
         </div>
       </div>
