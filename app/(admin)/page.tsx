@@ -1,35 +1,33 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "../../lib/supabase";
 import {
-  ShoppingCart,
+  ChefHat,
+  Coffee,
+  CreditCard,
+  Trash2,
   Clock,
   BellDot,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Store,
-  ArrowRight,
   Activity,
-  Trash2,
+  Receipt,
+  Users,
+  CheckSquare,
 } from "lucide-react";
-import { supabase } from "../../lib/supabase";
 import PoweredByFooter from "../../components/PoweredByFooter";
 
 export const dynamic = "force-dynamic";
 
 export default function DashboardFrontend() {
-  const [incomingOrders, setIncomingOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
-  const [todayStats, setTodayStats] = useState({
-    omset: 0,
-    expense: 0,
-    net: 0,
-    orderCount: 0,
-  });
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const fetchCloudDashboardData = async () => {
+  // State untuk Modal Rekap & Split Bill
+  const [isRecapOpen, setIsRecapOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+
+  const fetchOrders = async () => {
     try {
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
@@ -38,50 +36,12 @@ export default function DashboardFrontend() {
         .from("orders")
         .select("*")
         .gte("created_at", startOfDay.toISOString())
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
-
-      let omset = 0;
-      let expense = 0;
-      let orderCount = 0;
-      const liveOrdersList: any[] = [];
-
-      data?.forEach((item: any) => {
-        if (item.type === "IN") {
-          omset += Number(item.amount);
-          orderCount++;
-          liveOrdersList.push(item);
-        } else if (item.type === "OUT") {
-          expense += Number(item.amount);
-        }
-      });
-
-      setTodayStats({
-        omset,
-        expense,
-        net: omset - expense,
-        orderCount,
-      });
-      setIncomingOrders(liveOrdersList.slice(0, 15));
+      setOrders(data || []);
     } catch (e) {
-      console.error("Gagal menarik data cloud dashboard:", e);
-    }
-  };
-
-  const handleDeleteOrder = async (id: number, description: string) => {
-    const konfirmasi = window.confirm(
-      `Apakah Anda yakin ingin menghapus pesanan salah ini?\n\n"${description}"`,
-    );
-    if (!konfirmasi) return;
-
-    try {
-      const { error } = await supabase.from("orders").delete().eq("id", id);
-      if (error) throw error;
-      alert("Pesanan salah berhasil dihapus dari database!");
-      fetchCloudDashboardData();
-    } catch (err: any) {
-      alert(`Gagal menghapus data: ${err.message}`);
+      console.error("Gagal menarik data:", e);
     }
   };
 
@@ -91,7 +51,7 @@ export default function DashboardFrontend() {
     audioRef.current = new Audio("/sounds/notification.mp3");
     audioRef.current.load();
 
-    fetchCloudDashboardData();
+    fetchOrders();
 
     const realtimeSubscription = supabase
       .channel("live-orders-channel")
@@ -99,7 +59,7 @@ export default function DashboardFrontend() {
         "postgres_changes",
         { event: "*", schema: "public", table: "orders" },
         () => {
-          fetchCloudDashboardData();
+          fetchOrders();
         },
       )
       .subscribe();
@@ -110,213 +70,330 @@ export default function DashboardFrontend() {
     };
   }, []);
 
+  // FUNGSI AKSI TUNGGAL (One-Click Flow)
+  const handleAction = async (order: any) => {
+    if (order.production_status === "PENDING") {
+      await supabase
+        .from("orders")
+        .update({ production_status: "DONE" })
+        .eq("id", order.id);
+    } else if (order.status === "PENDING") {
+      await supabase
+        .from("orders")
+        .update({ status: "PAID" })
+        .eq("id", order.id);
+    }
+    fetchOrders();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (window.confirm("Yakin ingin menghapus pesanan salah ini?")) {
+      await supabase.from("orders").delete().eq("id", id);
+      fetchOrders();
+    }
+  };
+
+  // --- LOGIKA REKAP & SPLIT BILL ---
+  // Ekstrak nama pelanggan dari teks deskripsi (Format: A/N [NAMA] - Pesanan)
+  const getCustomerName = (desc: string) => {
+    const match = desc.match(/A\/N \[(.*?)\]/);
+    return match ? match[1] : "Pelanggan Umum";
+  };
+
+  // Hanya ambil pesanan yang sudah selesai dibuat tapi belum dibayar
+  const unpaidReadyOrders = orders.filter(
+    (o) => o.status === "PENDING" && o.production_status === "DONE",
+  );
+
+  // Kelompokkan pesanan berdasarkan nama pelanggan
+  const groupedBills = unpaidReadyOrders.reduce((acc: any, order: any) => {
+    const name = getCustomerName(order.description);
+    if (!acc[name]) acc[name] = [];
+    acc[name].push(order);
+    return acc;
+  }, {});
+
+  const handlePayGroup = async (customerName: string) => {
+    const customerOrders = groupedBills[customerName];
+    if (window.confirm(`Lunas untuk tagihan ${customerName}?`)) {
+      for (const o of customerOrders) {
+        await supabase.from("orders").update({ status: "PAID" }).eq("id", o.id);
+      }
+      setSelectedCustomer(null);
+      if (Object.keys(groupedBills).length <= 1) setIsRecapOpen(false);
+      fetchOrders();
+    }
+  };
+
   if (!currentTime) return null;
 
+  // Filter pesanan aktif untuk tampilan utama Barista & Waiter
+  const activeOrders = orders.filter(
+    (o) => o.status === "PENDING" || o.production_status === "PENDING",
+  );
+
   return (
-    // MEMASANG BACKGROUND ROCKOPI DI MENU ADMIN
-    <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center flex flex-col">
-      <div className="flex-1 bg-black/40 p-4 md:p-8 pt-6 flex flex-col">
-        <div className="space-y-8 max-w-7xl mx-auto w-full flex-1 flex flex-col pb-10">
+    <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center flex flex-col text-white font-sans">
+      {/* MODAL REKAP & SPLIT BILL (GLASSMORPHISM) */}
+      {isRecapOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white/10 backdrop-blur-2xl w-full max-w-2xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b border-white/10 flex justify-between items-center bg-black/40">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Receipt className="text-yellow-400" /> Rekap Tagihan & Split
+                Bill
+              </h3>
+              <button
+                onClick={() => setIsRecapOpen(false)}
+                className="text-white/60 hover:text-white bg-white/10 p-2 rounded-full transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {Object.keys(groupedBills).length === 0 ? (
+                <div className="text-center text-white/50 py-10">
+                  Tidak ada tagihan yang menunggu pembayaran.
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {Object.keys(groupedBills).map((name) => {
+                    const totalTagihan = groupedBills[name].reduce(
+                      (sum: number, o: any) => sum + Number(o.amount),
+                      0,
+                    );
+                    const isExpanded = selectedCustomer === name;
+
+                    return (
+                      <div
+                        key={name}
+                        className="bg-black/40 rounded-2xl border border-white/10 overflow-hidden transition-all"
+                      >
+                        <div
+                          className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5"
+                          onClick={() =>
+                            setSelectedCustomer(isExpanded ? null : name)
+                          }
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-yellow-500/20 text-yellow-400 rounded-full">
+                              <Users size={20} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-lg">{name}</p>
+                              <p className="text-xs text-gray-400">
+                                {groupedBills[name].length} Item Pesanan
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-black text-xl text-yellow-400">
+                              Rp {totalTagihan.toLocaleString("id-ID")}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              Klik untuk lihat / bayar
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* DETAIL SPLIT BILL JIKA DIKLIK */}
+                        {isExpanded && (
+                          <div className="bg-black/60 p-4 border-t border-white/10 space-y-3">
+                            {groupedBills[name].map((item: any) => (
+                              <div
+                                key={item.id}
+                                className="flex justify-between items-center text-sm border-b border-white/5 pb-2"
+                              >
+                                <span className="text-gray-300 w-2/3 truncate pr-2">
+                                  {item.description.replace(
+                                    `A/N [${name}] - `,
+                                    "",
+                                  )}
+                                </span>
+                                <div className="flex items-center gap-3">
+                                  <span className="font-bold">
+                                    Rp{" "}
+                                    {Number(item.amount).toLocaleString(
+                                      "id-ID",
+                                    )}
+                                  </span>
+                                  {/* TOMBOL BAYAR SATUAN (SPLIT BILL) */}
+                                  <button
+                                    onClick={() => handleAction(item)}
+                                    className="p-1.5 bg-green-500 hover:bg-green-600 rounded-md text-white transition-all"
+                                    title="Bayar Item Ini Saja"
+                                  >
+                                    <CheckSquare size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            <button
+                              onClick={() => handlePayGroup(name)}
+                              className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-black font-black py-3 rounded-xl transition-all shadow-lg active:scale-95"
+                            >
+                              LUNAS SEMUA (Rp{" "}
+                              {totalTagihan.toLocaleString("id-ID")})
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY GELAP UNTUK DASBOR UTAMA */}
+      <div className="flex-1 bg-black/50 backdrop-blur-sm p-4 md:p-8 pt-6 flex flex-col">
+        <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col space-y-8">
+          {/* HEADER ESTETIK */}
           <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              {/* WARNA TEKS DIBUAT PUTIH AGAR KONTRAST DENGAN BACKGROUND */}
-              <h2 className="text-3xl font-bold text-white drop-shadow-md flex items-center gap-3">
-                Dashboard Utama
-                <span className="text-xs bg-black/60 backdrop-blur-sm text-green-300 font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 shadow-lg">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                  Cloud Connected
-                </span>
+              <h2 className="text-3xl font-black drop-shadow-lg flex items-center gap-3">
+                Rockopi Command Center
               </h2>
-              <p className="text-gray-200 font-medium mt-1 drop-shadow-sm">
-                Pantau performa Rockopi hari ini secara sekilas.
+              <p className="text-gray-200 font-medium mt-1 drop-shadow-md">
+                Sistem operasional terpadu. Order First, Pay Later.
               </p>
             </div>
 
-            <div className="bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-xl border border-white/40 flex items-center gap-4">
-              <Clock className="text-[#1B4332]" size={24} />
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Waktu Operasional
-                </p>
-                <p className="text-xl font-black text-gray-900 leading-none mt-0.5">
-                  {currentTime.toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  })}
-                </p>
+            <div className="flex items-center gap-3">
+              {/* TOMBOL BUKA REKAP */}
+              <button
+                onClick={() => setIsRecapOpen(true)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black backdrop-blur-xl px-5 py-3.5 rounded-2xl shadow-2xl font-black flex items-center gap-2 transition-all active:scale-95 border border-yellow-400"
+              >
+                <Receipt size={20} /> Rekap Tagihan
+                {unpaidReadyOrders.length > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1 animate-pulse">
+                    {Object.keys(groupedBills).length} Meja
+                  </span>
+                )}
+              </button>
+
+              <div className="bg-white/10 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-4 hidden sm:flex">
+                <Clock className="text-green-300" size={24} />
+                <div>
+                  <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">
+                    Waktu Live
+                  </p>
+                  <p className="text-xl font-black leading-none mt-0.5 tracking-wider">
+                    {currentTime.toLocaleTimeString("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
               </div>
             </div>
           </header>
 
-          {/* STATS CARDS: Diberi efek kaca (Glassmorphism) agar sangat estetik */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                  <ShoppingCart size={20} />
-                </div>
-                <h3 className="text-sm font-bold text-gray-600">
-                  Total Pesanan
-                </h3>
+          {/* AREA KERJA BARISTA & WAITRESS (ONE-VIEW FLOW) */}
+          <div className="bg-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden flex-1 flex flex-col">
+            <div className="border-b border-white/10 p-5 flex items-center justify-between bg-black/20">
+              <div className="flex items-center gap-3">
+                <BellDot size={22} className="text-green-400 animate-pulse" />
+                <h3 className="text-lg font-bold">Antrean Berjalan</h3>
               </div>
-              <p className="text-4xl font-black text-gray-900">
-                {todayStats.orderCount}{" "}
-                <span className="text-lg text-gray-500 font-medium">Order</span>
-              </p>
+              <div className="flex items-center gap-2 text-xs font-bold bg-white/10 px-4 py-2 rounded-full shadow-inner border border-white/10">
+                <Activity size={14} className="text-green-300" />{" "}
+                {activeOrders.length} Pesanan Berjalan
+              </div>
             </div>
 
-            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                  <TrendingUp size={20} />
+            <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 overflow-y-auto">
+              {activeOrders.length === 0 ? (
+                <div className="col-span-full py-20 text-center text-white/50">
+                  <Coffee size={48} className="mx-auto mb-4 opacity-50" />
+                  <p className="font-bold text-xl mb-1">Dapur Bersih!</p>
+                  <p className="text-sm">
+                    Belum ada pesanan masuk. Seduh kopi Anda sendiri dan
+                    bersantai sejenak.
+                  </p>
                 </div>
-                <h3 className="text-sm font-bold text-gray-600">Omset Masuk</h3>
-              </div>
-              <p className="text-3xl font-black text-gray-900">
-                Rp {todayStats.omset.toLocaleString("id-ID")}
-              </p>
-            </div>
+              ) : (
+                activeOrders.map((order) => {
+                  const isPendingProduction =
+                    order.production_status === "PENDING";
+                  const cardStyle = isPendingProduction
+                    ? "bg-blue-900/40 border-blue-400/40 hover:border-blue-300"
+                    : "bg-green-900/40 border-green-400/40 hover:border-green-300";
 
-            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                  <TrendingDown size={20} />
-                </div>
-                <h3 className="text-sm font-bold text-gray-600">Pengeluaran</h3>
-              </div>
-              <p className="text-3xl font-black text-gray-900">
-                Rp {todayStats.expense.toLocaleString("id-ID")}
-              </p>
-            </div>
+                  return (
+                    <div
+                      key={order.id}
+                      className={`${cardStyle} backdrop-blur-md p-5 rounded-2xl border shadow-xl flex flex-col gap-4 relative overflow-hidden group transition-all hover:-translate-y-1`}
+                    >
+                      {/* Ikon Latar Belakang Transparan */}
+                      <div className="absolute -right-4 -top-4 opacity-[0.07] pointer-events-none">
+                        {isPendingProduction ? (
+                          <ChefHat size={120} />
+                        ) : (
+                          <CreditCard size={120} />
+                        )}
+                      </div>
 
-            <div
-              className={`backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/20 relative overflow-hidden text-white ${todayStats.net >= 0 ? "bg-gradient-to-br from-[#1B4332]/90 to-[#0d261b]/90" : "bg-red-800/90"}`}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-black/30 flex items-center justify-center">
-                  <DollarSign size={20} />
-                </div>
-                <h3 className="text-sm font-bold text-green-100">
-                  Laba Hari Ini
-                </h3>
-              </div>
-              <p className="text-3xl font-black drop-shadow-md">
-                {todayStats.net < 0 ? "-" : ""} Rp{" "}
-                {Math.abs(todayStats.net).toLocaleString("id-ID")}
-              </p>
+                      <div className="z-10 flex-1">
+                        <div className="flex justify-between items-start mb-3">
+                          <span className="text-[11px] font-bold px-2.5 py-1 bg-black/50 rounded-md border border-white/10 shadow-inner">
+                            {new Date(order.created_at).toLocaleTimeString(
+                              "id-ID",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </span>
+                          <button
+                            onClick={() => handleDelete(order.id)}
+                            className="text-white/30 hover:text-red-400 transition-colors p-1 bg-black/20 rounded-md"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <p className="font-bold text-lg leading-snug drop-shadow-md text-white/95">
+                          {order.description}
+                        </p>
+
+                        {/* Label Status untuk Waiter */}
+                        {!isPendingProduction && (
+                          <div className="mt-2 inline-block px-2.5 py-1 bg-green-500/20 border border-green-400/30 rounded text-[10px] font-bold text-green-300">
+                            ✓ Siap Diantar / Menunggu Bayar
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleAction(order)}
+                        className={`z-10 w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg border ${
+                          isPendingProduction
+                            ? "bg-blue-500 hover:bg-blue-400 border-blue-300/50 text-white"
+                            : "bg-green-500 hover:bg-green-400 border-green-300/50 text-white"
+                        }`}
+                      >
+                        {isPendingProduction ? (
+                          <>
+                            <ChefHat size={18} /> Selesai Dibuat (Antar)
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard size={18} /> Tandai Lunas
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
-          {/* FEED TABEL LIVE */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/40">
-              <div className="border-b border-gray-100 p-5 flex items-center justify-between bg-white/50">
-                <div className="flex items-center gap-3">
-                  <BellDot size={22} className="text-red-500 animate-pulse" />
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Pesanan Masuk Live
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
-                  <Activity size={14} className="text-blue-500" /> Real-time
-                  Feed
-                </div>
-              </div>
-
-              <div className="max-h-[550px] overflow-y-auto">
-                {incomingOrders.length === 0 ? (
-                  <div className="p-16 text-center text-gray-500">
-                    <Store size={48} className="mx-auto mb-4 opacity-20" />
-                    <p className="font-bold text-xl text-[#1B4332] mb-1">
-                      Belum Ada Pesanan
-                    </p>
-                    <p className="text-sm">
-                      Gunakan HP untuk mengetes sistem orderan baru.
-                    </p>
-                  </div>
-                ) : (
-                  <table className="w-full text-left border-collapse min-w-[580px]">
-                    <thead className="bg-gray-50/80 sticky top-0 z-10 border-b border-gray-100 shadow-sm backdrop-blur-md">
-                      <tr className="text-sm text-gray-600">
-                        <th className="p-4 font-bold">Waktu</th>
-                        <th className="p-4 font-bold">Detail Pesanan</th>
-                        <th className="p-4 font-bold text-right">
-                          Total Bayar
-                        </th>
-                        <th className="p-4 font-bold text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {incomingOrders.map((order: any, index: number) => (
-                        <tr
-                          key={order.id}
-                          className={`border-b border-gray-50 transition-colors ${index === 0 ? "bg-green-50/60" : "hover:bg-white bg-transparent"}`}
-                        >
-                          <td className="p-4 whitespace-nowrap text-gray-600 text-sm">
-                            <span className="font-bold text-gray-900 bg-white border border-gray-100 px-2.5 py-1.5 rounded-md shadow-sm">
-                              {new Date(order.created_at).toLocaleTimeString(
-                                "id-ID",
-                                { hour: "2-digit", minute: "2-digit" },
-                              )}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <p className="font-bold text-gray-800 leading-tight">
-                              {order.description}
-                            </p>
-                          </td>
-                          <td className="p-4 text-right font-black text-lg text-[#1B4332] whitespace-nowrap">
-                            Rp {Number(order.amount).toLocaleString("id-ID")}
-                          </td>
-                          <td className="p-4 text-center">
-                            <button
-                              onClick={() =>
-                                handleDeleteOrder(order.id, order.description)
-                              }
-                              className="p-2.5 text-red-600 hover:bg-red-50 hover:scale-105 rounded-full transition-all inline-flex items-center justify-center shadow-sm border border-gray-100 bg-white"
-                              title="Hapus Pesanan Salah"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-6 lg:sticky lg:top-4">
-              <div className="bg-black/80 backdrop-blur-xl p-6 rounded-3xl shadow-2xl text-white border border-white/20 relative overflow-hidden">
-                <div className="absolute -right-6 -bottom-6 opacity-10 text-white">
-                  <Store size={140} />
-                </div>
-                <h3 className="font-bold text-lg mb-2 z-10 relative">
-                  Status Sistem Cloud
-                </h3>
-                <div className="flex items-center gap-3 mb-6 z-10 relative">
-                  <span className="relative flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
-                  </span>
-                  <span className="font-bold text-green-400 drop-shadow-sm">
-                    SUPABASE LIVE STREAM
-                  </span>
-                </div>
-                <a
-                  href="/order"
-                  target="_blank"
-                  className="w-full bg-white text-black font-black py-4 rounded-xl flex items-center justify-center gap-2.5 shadow-md hover:bg-gray-100 transition-colors active:scale-95 z-10 relative"
-                >
-                  Buka Layar Kasir / Order <ArrowRight size={20} />
-                </a>
-              </div>
-            </div>
+          <div className="pt-2">
+            <PoweredByFooter />
           </div>
         </div>
-        <PoweredByFooter />
       </div>
     </div>
   );
