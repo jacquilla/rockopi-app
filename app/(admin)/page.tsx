@@ -1,6 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
 import { useState, useEffect, useRef } from "react";
 import {
   ShoppingCart,
@@ -13,7 +12,10 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
-import { supabase } from "../../lib/supabase"; // Koneksi Supabase
+import { supabase } from "../lib/supabase"; // Koneksi Supabase
+
+// Memastikan halaman selalu diperbarui secara dinamis di Vercel
+export const dynamic = "force-dynamic";
 
 export default function DashboardFrontend() {
   const [incomingOrders, setIncomingOrders] = useState<any[]>([]);
@@ -49,10 +51,8 @@ export default function DashboardFrontend() {
       data?.forEach((item: any) => {
         if (item.type === "IN") {
           omset += Number(item.amount);
-          if (item.description.includes("Pesanan Pelanggan")) {
-            orderCount++;
-            liveOrdersList.push(item);
-          }
+          orderCount++; // KOREKSI: Semua tipe IN dihitung sebagai pesanan masuk
+          liveOrdersList.push(item); // KOREKSI: Masukkan semua tipe IN ke dalam list
         } else if (item.type === "OUT") {
           expense += Number(item.amount);
         }
@@ -92,20 +92,12 @@ export default function DashboardFrontend() {
           // 1. Tarik ulang kalkulasi angka KPI terbaru
           fetchCloudDashboardData();
 
-          // 2. Bunyikan speaker alarm jika baris data baru adalah pesanan kopi
-          if (
-            payload.new &&
-            payload.new.description.includes("Pesanan Pelanggan")
-          ) {
+          // 2. KOREKSI: Bunyikan alarm jika data baru yang masuk bertipe 'IN'
+          if (payload.new && payload.new.type === "IN") {
             if (audioRef.current) {
               audioRef.current
                 .play()
-                .catch((err) =>
-                  console.log(
-                    "Autoplay diblokir browser, butuh interaksi klik pertama:",
-                    err,
-                  ),
-                );
+                .catch((err) => console.log("Autoplay diblokir browser:", err));
             }
           }
         },
@@ -281,8 +273,9 @@ export default function DashboardFrontend() {
                         </span>
                       </td>
                       <td className="p-4">
+                        {/* KOREKSI: Menampilkan teks deskripsi pesanan yang kini berisi nama pembeli secara utuh */}
                         <p className="font-bold text-gray-800">
-                          {order.description.replace("Pesanan Pelanggan: ", "")}
+                          {order.description}
                         </p>
                       </td>
                       <td className="p-4 text-right font-black text-lg text-[#1B4332] whitespace-nowrap">
