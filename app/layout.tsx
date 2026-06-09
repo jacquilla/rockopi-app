@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/lib/theme-context";
 
-// Di sinilah kita mengatur judul tab dan ikon tab (favicon)
 export const metadata: Metadata = {
   title: "Rockopi",
   description: "Sistem Pemesanan dan Manajemen Gudang Rockopi",
@@ -17,9 +17,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      {/* Tag body ini yang sebelumnya hilang dan dicari oleh Next.js */}
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="bg-gray-50 text-gray-900 font-sans min-h-screen">
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
