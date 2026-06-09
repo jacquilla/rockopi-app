@@ -149,10 +149,12 @@ export default function FinancePage() {
     }
   };
 
+  // 1. Ganti bagian useEffect agar memanggil data setiap kali halaman dimuat
   useEffect(() => {
     fetchFinanceData();
-  }, [filterType, selectedDate]);
+  }, [filterType, selectedDate]); // Data akan ter-update otomatis jika filter berubah
 
+  // 2. Perbarui fungsi simpan agar memicu fetch ulang secara instan
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || !amount) return;
@@ -165,26 +167,24 @@ export default function FinancePage() {
           type: "OUT",
           amount: Number(amount),
           status: "PAID",
+          created_at: new Date().toISOString(), // Memastikan timestamp terbaca jelas
         },
       ]);
 
       if (error) throw error;
 
-      alert("Catatan biaya operasional berhasil disimpan!");
+      // Bersihkan form
       setDescription("");
       setAmount("");
-      fetchFinanceData();
+
+      // Panggil ulang data agar tabel langsung terupdate tanpa refresh
+      await fetchFinanceData();
+
+      alert("Catatan biaya operasional berhasil disimpan!");
     } catch (err: any) {
       alert(`Gagal menyimpan data: ${err.message}`);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleDeleteTransaction = async (id: number) => {
-    if (window.confirm("Hapus catatan transaksi ini dari pembukuan?")) {
-      await supabase.from("orders").delete().eq("id", id);
-      fetchFinanceData();
     }
   };
 
