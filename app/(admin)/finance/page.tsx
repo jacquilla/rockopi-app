@@ -11,7 +11,6 @@ import {
   Loader2,
   Calendar,
   FileText,
-  BarChart3,
   Award,
   AlertCircle,
 } from "lucide-react";
@@ -28,9 +27,14 @@ export default function FinancePage() {
   const [filterType, setFilterType] = useState<"DAILY" | "WEEKLY" | "MONTHLY">(
     "DAILY",
   );
+
+  // PERBAIKAN LOGIKA: Menggunakan penanggalan lokal Indonesia agar Pemasukan Harian langsung sinkron
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const today = new Date();
-    return today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
   });
 
   // State Analisis Produk
@@ -45,18 +49,17 @@ export default function FinancePage() {
   const fetchFinanceData = async () => {
     setIsLoading(true);
     try {
-      // Tentukan rentang waktu berdasarkan filterType dan selectedDate
-      const baseDate = new Date(selectedDate);
-      let start = new Date(baseDate);
-      let end = new Date(baseDate);
+      const [year, month, day] = selectedDate.split("-").map(Number);
+
+      // Mengunci object tanggal murni berbasis waktu lokal zona Indonesia
+      let start = new Date(year, month - 1, day, 0, 0, 0, 0);
+      let end = new Date(year, month - 1, day, 23, 59, 59, 999);
 
       if (filterType === "DAILY") {
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
+        // Rentang waktu harian lokal sudah pas
       } else if (filterType === "WEEKLY") {
-        // Tarik dari hari Senin minggu berjalan
-        const day = baseDate.getDay();
-        const diff = baseDate.getDate() - day + (day === 0 ? -6 : 1);
+        const dayOfWeek = start.getDay();
+        const diff = start.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Set ke hari Senin
         start.setDate(diff);
         start.setHours(0, 0, 0, 0);
 
@@ -64,15 +67,12 @@ export default function FinancePage() {
         end.setDate(start.getDate() + 6);
         end.setHours(23, 59, 59, 999);
       } else if (filterType === "MONTHLY") {
-        // Tarik dari tanggal 1 sampai akhir bulan berjalan
         start.setDate(1);
         start.setHours(0, 0, 0, 0);
 
-        end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-        end.setHours(23, 59, 59, 999);
+        end = new Date(year, month, 0, 23, 59, 59, 999); // Akhir bulan murni
       }
 
-      // Ambil seluruh data dari cloud Supabase sesuai rentang waktu filter
       const { data, error } = await supabase
         .from("orders")
         .select("*")
@@ -82,7 +82,6 @@ export default function FinancePage() {
 
       if (error) throw error;
 
-      // Filter: Hanya hitung pemasukan yang berstatus 'PAID'
       const validTransactions = (data || []).filter((item: any) => {
         if (item.type === "IN" && item.status !== "PAID") return false;
         return true;
@@ -90,7 +89,6 @@ export default function FinancePage() {
 
       setTransactions(validTransactions);
 
-      // 1. HITUNG KALKULASI FINANSIAL
       let totalOmset = 0;
       let totalExpense = 0;
 
@@ -108,17 +106,13 @@ export default function FinancePage() {
         net: totalOmset - totalExpense,
       });
 
-      // 2. ALGORITMA EKSTRAKSI DAN ANALISIS MENU TERLARIS (IN-MEMORY PARSING)
       const menuCounts: { [key: string]: number } = {};
-
       validTransactions.forEach((item: any) => {
         if (item.type === "IN") {
-          // Format string deskripsi: "A/N [BUDI] - 2x Hot Rockopi ⭐ & 1x Iced Matcha"
           const parts = item.description.split(" - ");
           if (parts.length > 1) {
-            const orderContent = parts[1]; // "2x Hot Rockopi ⭐ & 1x Iced Matcha"
+            const orderContent = parts[1];
             const menuTokens = orderContent.split(" & ");
-
             menuTokens.forEach((token: string) => {
               const match = token.match(/(\d+)x\s+(.+)/);
               if (match) {
@@ -131,15 +125,10 @@ export default function FinancePage() {
         }
       });
 
-      // Konversi Map objek menjadi Array bersarang untuk sorting
       const sortedMenuProducts = Object.keys(menuCounts)
-        .map((name) => ({
-          name,
-          qty: menuCounts[name],
-        }))
+        .map((name) => ({ name, qty: menuCounts[name] }))
         .sort((a, b) => b.qty - a.qty);
 
-      // Ambil Top 4 Terlaris dan Bottom 4 Kurang Laku
       setBestSellers(sortedMenuProducts.slice(0, 4));
       setLeastSellers([...sortedMenuProducts].reverse().slice(0, 4));
     } catch (err: any) {
@@ -157,7 +146,6 @@ export default function FinancePage() {
     e.preventDefault();
     if (!description.trim() || !amount) return;
     setIsSaving(true);
-
     try {
       const { error } = await supabase.from("orders").insert([
         {
@@ -165,15 +153,14 @@ export default function FinancePage() {
           type: "OUT",
           amount: Number(amount),
           status: "PAID",
+          created_at: new Date().toISOString(),
         },
       ]);
-
       if (error) throw error;
-
-      alert("Catatan biaya operasional berhasil disimpan!");
       setDescription("");
       setAmount("");
-      fetchFinanceData();
+      await fetchFinanceData();
+      alert("Catatan biaya operasional berhasil disimpan!");
     } catch (err: any) {
       alert(`Gagal menyimpan data: ${err.message}`);
     } finally {
@@ -184,7 +171,7 @@ export default function FinancePage() {
   const handleDeleteTransaction = async (id: number) => {
     if (window.confirm("Hapus catatan transaksi ini dari pembukuan?")) {
       await supabase.from("orders").delete().eq("id", id);
-      fetchFinanceData();
+      await fetchFinanceData();
     }
   };
 
@@ -192,48 +179,43 @@ export default function FinancePage() {
     <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center flex flex-col text-white font-sans">
       <div className="flex-1 bg-black/50 backdrop-blur-sm p-4 md:p-8 pt-6 flex flex-col">
         <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col space-y-6 pb-10">
-          {/* HEADER DASHBOARD */}
+          {/* HEADER DENGAN LOGO.PNG KEMBALI AKTIF */}
           <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-4">
-            <div>
-              <h2 className="text-3xl font-black drop-shadow-lg text-white">
-                Pembukuan Finansial Rockopi
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.png"
+                alt="Logo Text Rockopi"
+                className="h-7 md:h-10 object-contain drop-shadow-xl"
+              />
+              <h2 className="text-2xl md:text-3xl font-black drop-shadow-lg text-white border-l-2 border-white/20 pl-3">
+                Pembukuan Finansial
               </h2>
-              <p className="text-gray-200 font-medium mt-1 drop-shadow-md">
-                Laporan pendapatan pintar terintegrasi cloud database Supabase.
-              </p>
             </div>
           </header>
 
-          {/* ALAT KONTROL FILTER & KALENDER KALKULATOR (GLASSMORPHISM) */}
           <div className="bg-white/10 backdrop-blur-xl p-4 rounded-3xl border border-white/20 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
-            {/* Pilihan Rentang Waktu */}
             <div className="flex items-center gap-2 bg-black/30 p-1.5 rounded-2xl border border-white/5 w-full md:w-auto overflow-x-auto">
               <button
                 onClick={() => setFilterType("DAILY")}
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${filterType === "DAILY" ? "bg-[#1B4332] text-white shadow-lg border border-white/10" : "text-gray-300 hover:bg-white/5"}`}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${filterType === "DAILY" ? "bg-[#1B4332] text-white shadow-lg border border-white/10" : "text-gray-300"}`}
               >
                 Harian
               </button>
               <button
                 onClick={() => setFilterType("WEEKLY")}
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${filterType === "WEEKLY" ? "bg-[#1B4332] text-white shadow-lg border border-white/10" : "text-gray-300 hover:bg-white/5"}`}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${filterType === "WEEKLY" ? "bg-[#1B4332] text-white shadow-lg border border-white/10" : "text-gray-300"}`}
               >
                 Mingguan
               </button>
               <button
                 onClick={() => setFilterType("MONTHLY")}
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${filterType === "MONTHLY" ? "bg-[#1B4332] text-white shadow-lg border border-white/10" : "text-gray-300 hover:bg-white/5"}`}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${filterType === "MONTHLY" ? "bg-[#1B4332] text-white shadow-lg border border-white/10" : "text-gray-300"}`}
               >
                 Bulanan
               </button>
             </div>
-
-            {/* Input Kalender Custom */}
             <div className="flex items-center gap-3 w-full md:w-auto bg-black/20 px-4 py-2 rounded-2xl border border-white/10">
-              <Calendar className="text-yellow-400 flex-shrink-0" size={18} />
-              <span className="text-xs font-bold text-gray-300 whitespace-nowrap">
-                Pilih Tanggal Acuan:
-              </span>
+              <Calendar className="text-yellow-400" size={18} />
               <input
                 type="date"
                 value={selectedDate}
@@ -243,61 +225,39 @@ export default function FinancePage() {
             </div>
           </div>
 
-          {/* CARD SUMMARY KEUANGAN */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 text-gray-900">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                  <TrendingUp size={18} />
-                </div>
-                <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider">
-                  Total Pendapatan
-                </h3>
-              </div>
+              <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">
+                Total Pendapatan
+              </h3>
               <p className="text-3xl font-black text-[#1B4332]">
                 Rp {stats.omset.toLocaleString("id-ID")}
               </p>
             </div>
-
             <div className="bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 text-gray-900">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                  <TrendingDown size={18} />
-                </div>
-                <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider">
-                  Total Pengeluaran
-                </h3>
-              </div>
+              <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">
+                Total Pengeluaran
+              </h3>
               <p className="text-3xl font-black text-red-600">
                 Rp {stats.expense.toLocaleString("id-ID")}
               </p>
             </div>
-
             <div
               className={`p-6 rounded-3xl shadow-2xl border border-white/20 backdrop-blur-xl text-white ${stats.net >= 0 ? "bg-gradient-to-br from-[#1B4332]/95 to-[#0d261b]/95" : "bg-red-900/95"}`}
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-black/30 flex items-center justify-center text-white">
-                  <DollarSign size={18} />
-                </div>
-                <h3 className="text-xs font-bold text-green-200 uppercase tracking-wider">
-                  Laba Bersih
-                </h3>
-              </div>
+              <h3 className="text-xs font-bold text-green-200 uppercase tracking-wider mb-3">
+                Laba Bersih
+              </h3>
               <p className="text-3xl font-black drop-shadow-md">
-                {stats.net < 0 ? "-" : ""} Rp{" "}
-                {Math.abs(stats.net).toLocaleString("id-ID")}
+                Rp {stats.net.toLocaleString("id-ID")}
               </p>
             </div>
           </div>
 
-          {/* SPLIT SCREEN LAYOUT */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* KOLOM KIRI: ANALISIS PRODUK TERLARIS & DATA KAS */}
             <div className="lg:col-span-2 space-y-6">
               {/* PANEL ANALISIS PRODUK MENU TERLARIS */}
               <div className="bg-white/10 backdrop-blur-2xl p-5 md:p-6 rounded-3xl border border-white/20 shadow-2xl grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Bagian Best Seller */}
                 <div>
                   <h4 className="font-black text-sm text-green-300 flex items-center gap-2 uppercase tracking-wider mb-4">
                     <Award size={18} /> Menu Terlaris (Best Seller)
@@ -332,7 +292,6 @@ export default function FinancePage() {
                   )}
                 </div>
 
-                {/* Bagian Kurang Laku */}
                 <div>
                   <h4 className="font-black text-sm text-red-400 flex items-center gap-2 uppercase tracking-wider mb-4">
                     <AlertCircle size={18} /> Kurang Laku / Pasif
@@ -368,144 +327,83 @@ export default function FinancePage() {
                 </div>
               </div>
 
-              {/* TABEL MUTASI KEUANGAN ARUS KAS */}
               <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/40 text-gray-900 flex flex-col">
-                <div className="border-b border-gray-100 p-5 flex items-center justify-between bg-white/50">
-                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
-                    <FileText size={18} className="text-[#1B4332]" /> Daftar
-                    Aliran Dana Masuk & Keluar
-                  </h3>
-                  <span className="text-[11px] font-bold text-gray-500 bg-white border px-3 py-1 rounded-full shadow-sm">
-                    {transactions.length} Mutasi
-                  </span>
+                <div className="border-b p-5 bg-white/50 font-black text-gray-900">
+                  Daftar Aliran Dana Masuk & Keluar
                 </div>
-
                 <div className="max-h-[420px] overflow-y-auto">
-                  {isLoading ? (
-                    <div className="flex flex-col items-center justify-center p-16 gap-2">
-                      <Loader2
-                        className="animate-spin text-[#1B4332]"
-                        size={24}
-                      />
-                      <p className="text-xs font-bold text-gray-500">
-                        Membuka pembukuan cloud...
-                      </p>
-                    </div>
-                  ) : transactions.length === 0 ? (
-                    <div className="p-14 text-center text-gray-400 font-medium text-xs">
-                      Tidak ada riwayat mutasi kas di rentang waktu ini.
-                    </div>
-                  ) : (
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-gray-50/80 border-b border-gray-100 sticky top-0 backdrop-blur-md text-[11px] font-bold text-gray-500">
-                        <tr>
-                          <th className="p-4 w-24">Waktu</th>
-                          <th className="p-4">Keterangan</th>
-                          <th className="p-4 text-right w-32">Jumlah</th>
-                          <th className="p-4 text-center w-14">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-xs">
-                        {transactions.map((tx) => {
-                          const isIncome = tx.type === "IN";
-                          return (
-                            <tr
-                              key={tx.id}
-                              className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors"
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase">
+                      <tr>
+                        <th className="p-4">Waktu</th>
+                        <th className="p-4">Keterangan</th>
+                        <th className="p-4 text-right">Jumlah</th>
+                        <th className="p-4 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs">
+                      {transactions.map((tx) => (
+                        <tr key={tx.id} className="border-b border-gray-50">
+                          <td className="p-4">
+                            {new Date(tx.created_at).toLocaleTimeString(
+                              "id-ID",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </td>
+                          <td className="p-4">{tx.description}</td>
+                          <td
+                            className={`p-4 text-right font-black ${tx.type === "IN" ? "text-[#1B4332]" : "text-red-600"}`}
+                          >
+                            {tx.type === "IN" ? "+" : "-"} Rp{" "}
+                            {Number(tx.amount).toLocaleString("id-ID")}
+                          </td>
+                          <td className="p-4 text-center">
+                            <button
+                              onClick={() => handleDeleteTransaction(tx.id)}
+                              className="text-gray-400 hover:text-red-500"
                             >
-                              <td className="p-4 text-gray-400 font-bold">
-                                {new Date(tx.created_at).toLocaleTimeString(
-                                  "id-ID",
-                                  { hour: "2-digit", minute: "2-digit" },
-                                )}
-                              </td>
-                              <td className="p-4">
-                                <p className="font-bold text-gray-800 leading-tight">
-                                  {tx.description}
-                                </p>
-                              </td>
-                              <td
-                                className={`p-4 text-right font-black text-sm whitespace-nowrap ${isIncome ? "text-[#1B4332]" : "text-red-600"}`}
-                              >
-                                {isIncome ? "+" : "-"} Rp{" "}
-                                {Number(tx.amount).toLocaleString("id-ID")}
-                              </td>
-                              <td className="p-4 text-center">
-                                <button
-                                  onClick={() => handleDeleteTransaction(tx.id)}
-                                  className="p-2 text-gray-300 hover:text-red-500 rounded-full transition-colors"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
-            {/* KOLOM KANAN: INPUT PENYIMPANAN BIAYA MANUWAL */}
             <div className="bg-black/80 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border border-white/20 text-white lg:sticky lg:top-4">
-              <h3 className="font-black text-lg mb-1 tracking-wide">
+              <h3 className="font-black text-lg mb-4">
                 Input Pengeluaran Toko
               </h3>
-              <p className="text-xs text-gray-300 mb-5">
-                Catat pengeluaran operasional mendadak Rockopi di sini.
-              </p>
-
               <form onSubmit={handleAddExpense} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300">
-                    Deskripsi Pengeluaran
-                  </label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Contoh: Beli Es Batu & Cup Plastik"
-                    className="w-full bg-white/10 text-white font-bold px-4 py-3 rounded-xl border border-white/10 focus:border-green-400 outline-none transition-all text-xs placeholder-gray-500"
-                    maxLength={50}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-300">
-                    Jumlah Dana (Rp)
-                  </label>
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="Contoh: 150000"
-                    className="w-full bg-white/10 text-white font-bold px-4 py-3 rounded-xl border border-white/10 focus:border-green-400 outline-none transition-all text-xs placeholder-gray-500"
-                    required
-                  />
-                </div>
-
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Deskripsi Pengeluaran"
+                  className="w-full bg-white/10 p-3 rounded-xl border border-white/10 text-xs text-white"
+                  required
+                />
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Jumlah Uang (Rp)"
+                  className="w-full bg-white/10 p-3 rounded-xl border border-white/10 text-xs text-white"
+                  required
+                />
                 <button
                   type="submit"
-                  disabled={isSaving}
-                  className="w-full bg-white hover:bg-gray-100 text-[#1B4332] font-black py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 text-xs font-bold mt-2"
+                  className="w-full bg-white text-[#1B4332] font-black py-3 rounded-xl text-xs shadow-lg transition-transform active:scale-95"
                 >
-                  {isSaving ? (
-                    <Loader2 className="animate-spin" size={16} />
-                  ) : (
-                    <PlusCircle size={16} />
-                  )}
                   Simpan Transaksi Keluar
                 </button>
               </form>
             </div>
           </div>
-
-          <div className="pt-2">
-            <PoweredByFooter />
-          </div>
+          <PoweredByFooter />
         </div>
       </div>
     </div>
