@@ -1,34 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Minus,
-  Plus,
-  ShoppingCart,
-  Send,
-  X,
-  UserCircle2,
-  Loader2,
-} from "lucide-react";
-import { supabase } from "../../lib/supabase";
-import PoweredByFooter from "../../components/PoweredByFooter";
+import { Minus, Plus, ShoppingCart, Send, X, CircleUser as UserCircle2, Loader as Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import type { Product } from "@/lib/types";
+import PoweredByFooter from "@/components/PoweredByFooter";
 
 export const dynamic = "force-dynamic";
 
+const CATEGORIES = ["Hot Coffee", "Iced Coffee", "Non Coffee"];
+
 export default function CustomerOrderPage() {
-  const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [orderItems, setOrderItems] = useState<{ [key: number]: number }>({});
-  const [expandedDesc, setExpandedDesc] = useState<{ [key: number]: boolean }>(
-    {},
-  );
+  const [menuItems, setMenuItems] = useState<Product[]>([]);
+  const [orderItems, setOrderItems] = useState<Record<number, number>>({});
+  const [expandedDesc, setExpandedDesc] = useState<Record<number, boolean>>({});
   const [activeCategory, setActiveCategory] = useState("Hot Coffee");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const categories = ["Hot Coffee", "Iced Coffee", "Non Coffee"];
-
-  const fetchMenuFromCloud = async () => {
+  const fetchMenu = async () => {
     try {
       const { data, error } = await supabase
         .from("products")
@@ -37,15 +29,15 @@ export default function CustomerOrderPage() {
 
       if (error) throw error;
       setMenuItems(data || []);
-    } catch (err: any) {
-      console.error("Gagal memuat menu:", err.message);
+    } catch (err) {
+      console.error("Gagal memuat menu:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMenuFromCloud();
+    fetchMenu();
   }, []);
 
   const handleIncrease = (id: number) => {
@@ -53,10 +45,11 @@ export default function CustomerOrderPage() {
   };
 
   const handleDecrease = (id: number) => {
-    setOrderItems((prev) => ({
-      ...prev,
-      [id]: Math.max((prev[id] || 0) - 1, 0),
-    }));
+    setOrderItems((prev) => {
+      const next = { ...prev, [id]: Math.max((prev[id] || 0) - 1, 0) };
+      if (next[id] === 0) delete next[id];
+      return next;
+    });
   };
 
   const toggleDescription = (id: number) => {
@@ -64,49 +57,45 @@ export default function CustomerOrderPage() {
   };
 
   const totalBarang = Object.values(orderItems).reduce((a, b) => a + b, 0);
-  const totalHarga = menuItems.reduce((total, item) => {
-    return total + item.price * (orderItems[item.id] || 0);
-  }, 0);
+  const totalHarga = menuItems.reduce(
+    (total, item) => total + item.price * (orderItems[item.id] || 0),
+    0
+  );
 
   const handleSubmitOrder = async () => {
     if (totalBarang === 0) return;
-
     if (!customerName.trim()) {
-      alert('Mohon isi "Nama Anda" terlebih dahulu! ☕');
+      alert('Mohon isi "Nama Anda" terlebih dahulu!');
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    const activeOrderedItems = menuItems.filter(
-      (item) => orderItems[item.id] > 0,
-    );
+    setIsSubmitting(true);
+    const activeOrderedItems = menuItems.filter((item) => orderItems[item.id] > 0);
     const detailPesanan = activeOrderedItems
       .map((item) => `${orderItems[item.id]}x ${item.name}`)
       .join(" & ");
 
     try {
-      // Hanya mengirim data transaksi finansial dan pesanan, TIDAK ADA LAGI potong stok
-      const { error: orderError } = await supabase.from("orders").insert([
-        {
-          description: `A/N [${customerName.toUpperCase()}] - ${detailPesanan}`,
-          type: "IN",
-          amount: totalHarga,
-        },
-      ]);
+      const { error } = await supabase.from("orders").insert({
+        description: `A/N [${customerName.trim().toUpperCase()}] - ${detailPesanan}`,
+        type: "IN",
+        amount: totalHarga,
+      });
 
-      if (orderError) throw orderError;
-
-      alert(`Pesanan Berhasil dikirim!`);
+      if (error) throw error;
+      alert("Pesanan Berhasil dikirim!");
       setOrderItems({});
       setCustomerName("");
-    } catch (err: any) {
-      alert(`Terjadi kesalahan sistem: ${err.message}`);
+    } catch (err) {
+      alert("Terjadi kesalahan sistem.");
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const filteredMenu = menuItems.filter(
-    (item) => item.category === activeCategory,
-  );
+  const filteredMenu = menuItems.filter((item) => item.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center flex flex-col">
@@ -165,8 +154,7 @@ export default function CustomerOrderPage() {
                 htmlFor="customerName"
                 className="text-sm font-black text-gray-800 flex items-center gap-2"
               >
-                <UserCircle2 size={18} className="text-[#1B4332]" /> Siapa Nama
-                Anda?
+                <UserCircle2 size={18} className="text-[#1B4332]" /> Siapa Nama Anda?
               </label>
               <input
                 id="customerName"
@@ -182,7 +170,7 @@ export default function CustomerOrderPage() {
           </div>
 
           <div className="flex justify-start md:justify-center gap-3 overflow-x-auto pb-2 w-full scrollbar-hide">
-            {categories.map((category) => (
+            {CATEGORIES.map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
@@ -230,9 +218,7 @@ export default function CustomerOrderPage() {
                       <h3 className="font-bold text-base text-[#1B4332] mb-1">
                         {item.name}
                       </h3>
-                      <p
-                        className={`text-xs text-gray-600 ${isExpanded ? "" : "line-clamp-2"}`}
-                      >
+                      <p className={`text-xs text-gray-600 ${isExpanded ? "" : "line-clamp-2"}`}>
                         {item.description}
                       </p>
                       {isLongText && (
@@ -250,7 +236,7 @@ export default function CustomerOrderPage() {
                         <div className="flex items-center gap-2 bg-gray-50 border rounded-full p-1">
                           <button
                             onClick={() => handleDecrease(item.id)}
-                            className="w-7 h-7 rounded-full bg-white flex items-center justify-center font-bold text-gray-600 shadow-sm active:bg-gray-200"
+                            className="w-7 h-7 rounded-full bg-white flex items-center justify-center font-bold text-gray-600 shadow-sm active:bg-gray-200 disabled:opacity-40"
                             disabled={qty === 0}
                           >
                             <Minus size={14} />
@@ -295,9 +281,16 @@ export default function CustomerOrderPage() {
             </div>
             <button
               onClick={handleSubmitOrder}
-              className="bg-white text-[#1B4332] px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 active:scale-95 transition-transform"
+              disabled={isSubmitting}
+              className="bg-white text-[#1B4332] px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
             >
-              Pesan Sekarang <Send size={16} />
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <>
+                  Pesan Sekarang <Send size={16} />
+                </>
+              )}
             </button>
           </div>
         </div>
