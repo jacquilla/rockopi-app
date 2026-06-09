@@ -1,7 +1,7 @@
 "use client";
-export const dynamic = "force-dynamic";
+
 import { useState } from "react";
-import { Minus, Plus, ShoppingCart, Send, X } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Send, X, UserCircle2 } from "lucide-react";
 import { supabase } from "../../lib/supabase"; // Import koneksi database cloud
 
 const mockMenu = [
@@ -237,6 +237,9 @@ const mockMenu = [
   },
 ];
 
+// Baris ini memastikan halaman selalu diperbarui secara Live (bypass build error)
+export const dynamic = "force-dynamic";
+
 export default function CustomerOrderPage() {
   const [orderItems, setOrderItems] = useState<{ [key: number]: number }>({});
   const [expandedDesc, setExpandedDesc] = useState<{ [key: number]: boolean }>(
@@ -244,6 +247,9 @@ export default function CustomerOrderPage() {
   );
   const [activeCategory, setActiveCategory] = useState("Hot Coffee");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // STATE BARU: Menyimpan Nama Pemesan
+  const [customerName, setCustomerName] = useState("");
 
   const categories = ["Hot Coffee", "Iced Coffee", "Non Coffee"];
 
@@ -267,36 +273,46 @@ export default function CustomerOrderPage() {
     return total + item.price * (orderItems[item.id] || 0);
   }, 0);
 
-  // LOGIKA BARU: Kirim pesanan ke database cloud Supabase
+  // LOGIKA PENGIRIMAN PESANAN (Kini menyertakan Nama)
   const handleSubmitOrder = async () => {
     if (totalBarang === 0) return;
+
+    // Validasi Nama Pemesan
+    if (!customerName.trim()) {
+      alert(
+        'Mohon isi "Nama Anda" terlebih dahulu agar barista kami mudah memanggil pesanan Anda! ☕',
+      );
+
+      // Mengarahkan layar agar scroll kembali ke atas (ke kotak nama)
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
     const detailPesanan = mockMenu
       .filter((item) => orderItems[item.id] > 0)
       .map((item) => `${orderItems[item.id]}x ${item.name}`)
       .join(" & ");
-    console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log(
-      "KEY:",
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20),
-    );
 
     // Jalankan query Insert ke cloud database
     const { error } = await supabase.from("orders").insert([
       {
-        description: `Pesanan Pelanggan: ${detailPesanan}`,
+        // Format Teks: "A/N [NAMA]: 2x Kopi ..."
+        description: `A/N [${customerName.toUpperCase()}] - ${detailPesanan}`,
         type: "IN",
         amount: totalHarga,
       },
     ]);
 
     if (error) {
-      alert(`Terjadi kesalahan database: ${error.message}`);
+      alert(`Terjadi kesalahan saat mengirim pesanan: ${error.message}`);
     } else {
       alert(
-        `Pesanan Berhasil Dibuat!\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}`,
+        `Pesanan Berhasil!\n\nAtas Nama: ${customerName.toUpperCase()}\nTotal Item: ${totalBarang}\nTotal Bayar: Rp ${totalHarga.toLocaleString("id-ID")}\n\nMohon tunggu panggilan dari Barista kami.`,
       );
+
+      // Kosongkan keranjang dan nama setelah sukses
       setOrderItems({});
+      setCustomerName("");
     }
   };
 
@@ -334,7 +350,7 @@ export default function CustomerOrderPage() {
       {/* Kontainer Utama */}
       <div className="min-h-screen bg-black/30 pb-36 p-4 md:p-8 pt-6 md:pt-12">
         <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
-          <header className="flex flex-col items-center text-center space-y-4 md:space-y-6 mb-4 md:mb-8">
+          <header className="flex flex-col items-center text-center space-y-4 md:space-y-6 mb-2 md:mb-6">
             <img
               src="/rockopi.png"
               alt="Rockopi Est 2019"
@@ -356,6 +372,32 @@ export default function CustomerOrderPage() {
               </p>
             </div>
           </header>
+
+          {/* INPUT NAMA PEMESAN (FITUR BARU) */}
+          <div className="w-full max-w-md mx-auto px-2">
+            <div className="bg-white/90 backdrop-blur-md p-4 md:p-5 rounded-2xl shadow-xl border-t-4 border-[#1B4332] flex flex-col gap-2">
+              <label
+                htmlFor="customerName"
+                className="text-sm md:text-base font-black text-gray-800 flex items-center gap-2"
+              >
+                <UserCircle2 size={18} className="text-[#1B4332]" />
+                Siapa Nama Anda?
+              </label>
+              <input
+                id="customerName"
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Contoh: Budi (Meja 4)"
+                className="w-full bg-gray-50 text-gray-900 font-bold px-4 py-3.5 rounded-xl border border-gray-300 focus:border-[#1B4332] focus:bg-white focus:ring-2 focus:ring-[#1B4332]/20 outline-none transition-all placeholder:font-normal placeholder:text-gray-400"
+                maxLength={25}
+                required
+              />
+              <p className="text-[10px] md:text-xs text-gray-500 italic mt-1">
+                *Agar Barista mudah memanggil pesanan Anda
+              </p>
+            </div>
+          </div>
 
           {/* TAB KATEGORI RESPONSIF */}
           <div className="flex justify-start md:justify-center gap-3 mb-6 overflow-x-auto pb-4 pt-2 px-4 snap-x scrollbar-hide w-full">
