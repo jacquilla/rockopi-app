@@ -1,121 +1,191 @@
 "use client";
 
-import { Package, Plus, Coffee, IceCream, Utensils } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Store, Edit3, Save, X, RefreshCw } from "lucide-react";
+// Folder ini 3 tingkat ke dalam, jadi menggunakan ../../../
+import { supabase } from "../../../lib/supabase";
+import PoweredByFooter from "../../../components/PoweredByFooter";
 
-const currentProducts = [
-  {
-    id: 1,
-    name: "Hot Rockopi ⭐",
-    category: "Hot Coffee",
-    price: 25000,
-    status: "Aktif",
-  },
-  {
-    id: 2,
-    name: "Iced Rockopi ⭐",
-    category: "Iced Coffee",
-    price: 25000,
-    status: "Aktif",
-  },
-  {
-    id: 3,
-    name: "Brown Sugar Rockopi",
-    category: "Iced Coffee",
-    price: 25000,
-    status: "Aktif",
-  },
-  {
-    id: 4,
-    name: "Hot Chocolate ⭐",
-    category: "Non Coffee",
-    price: 25000,
-    status: "Aktif",
-  },
-  {
-    id: 5,
-    name: "Iced Matcha",
-    category: "Non Coffee",
-    price: 30000,
-    status: "Aktif",
-  },
-];
+export const dynamic = "force-dynamic";
 
-export default function ProductsPage() {
+export default function MasterProductsPage() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [newDescription, setNewDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("category", { ascending: true });
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (err: any) {
+      alert(`Gagal mengambil data produk: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const startEditing = (id: number, currentDesc: string) => {
+    setEditingId(id);
+    setNewDescription(currentDesc);
+  };
+
+  const handleUpdateDescription = async (id: number) => {
+    if (!newDescription.trim()) return;
+    setIsSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({ description: newDescription })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      alert("Deskripsi menu berhasil diperbarui!");
+      setEditingId(null);
+      fetchProducts(); // Refresh tabel admin
+    } catch (err: any) {
+      alert(`Gagal memperbarui deskripsi: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* HEADER UTAMA */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <header className="flex items-center gap-3">
-          <div className="p-3 bg-white/80 backdrop-blur-sm text-[#1B4332] rounded-lg shadow-sm border border-white/50">
-            <Package size={24} />
+    <div className="space-y-8 max-w-7xl mx-auto flex flex-col min-h-[calc(100vh-4rem)] pb-12">
+      <header className="flex items-center justify-between gap-4 pt-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-white text-[#1B4332] rounded-lg shadow-sm border border-gray-100">
+            <Store size={24} />
           </div>
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 drop-shadow-sm">
-              Master Produk
+            <h2 className="text-3xl font-bold text-gray-900 shadow-sm">
+              Master Produk Kafe
             </h2>
-            <p className="text-gray-700 font-medium">
-              Kelola daftar menu dan harga jual cafe.
+            <p className="text-gray-600 font-medium text-sm mt-0.5">
+              Kelola informasi menu dan sinkronisasikan langsung ke device
+              pelanggan.
             </p>
           </div>
-        </header>
-
-        <button className="w-full sm:w-auto bg-[#1B4332] hover:bg-green-900 text-white font-bold px-5 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 text-sm">
-          <Plus size={18} /> Tambah Menu Baru
-        </button>
-      </div>
-
-      {/* STRUKTUR TABEL MENU */}
-      <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 overflow-hidden mt-8">
-        <div className="p-5 border-b border-gray-200/60 bg-gray-50/50 flex justify-between items-center">
-          <h3 className="font-bold text-gray-800">Daftar Menu Aktif</h3>
-          <span className="text-xs font-bold bg-green-100 text-green-800 px-3 py-1 rounded-full">
-            {currentProducts.length} Produk Terdaftar
-          </span>
         </div>
+        <button
+          onClick={fetchProducts}
+          className="p-2.5 bg-white border rounded-xl shadow-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 text-sm font-bold"
+        >
+          <RefreshCw size={16} /> Refresh
+        </button>
+      </header>
 
+      <div className="bg-white rounded-3xl shadow-xl border overflow-hidden flex-1">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[600px]">
-            <thead className="bg-gray-50">
-              <tr className="border-b border-gray-200 text-sm text-gray-600">
-                <th className="p-4 font-bold">Nama Menu</th>
-                <th className="p-4 font-bold">Kategori</th>
-                <th className="p-4 font-bold">Harga Jual</th>
-                <th className="p-4 font-bold text-center">Status</th>
+          <table className="w-full text-left border-collapse min-w-[700px]">
+            <thead className="bg-[#1B4332] text-white">
+              <tr className="text-sm">
+                <th className="p-4 font-bold w-32">Kategori</th>
+                <th className="p-4 font-bold w-48">Nama Menu</th>
+                <th className="p-4 font-bold w-32">Harga</th>
+                <th className="p-4 font-bold">
+                  Deskripsi Menu (Live di HP Pelanggan)
+                </th>
+                <th className="p-4 font-bold text-center w-36">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {currentProducts.map((product) => (
-                <tr
-                  key={product.id}
-                  className="border-b border-gray-100/50 hover:bg-white/60 transition-colors"
-                >
-                  <td className="p-4 font-bold text-gray-800 flex items-center gap-3">
-                    <div className="p-2 bg-gray-100 rounded-lg text-[#1B4332]">
-                      {product.category.includes("Hot") ? (
-                        <Coffee size={18} />
-                      ) : (
-                        <IceCream size={18} />
-                      )}
-                    </div>
-                    {product.name}
-                  </td>
-                  <td className="p-4 text-sm font-medium text-gray-600">
-                    {product.category}
-                  </td>
-                  <td className="p-4 font-bold text-gray-900">
-                    Rp {product.price.toLocaleString("id-ID")}
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                      {product.status}
-                    </span>
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="p-12 text-center text-gray-500 font-bold"
+                  >
+                    Sinkronisasi produk cloud...
                   </td>
                 </tr>
-              ))}
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-12 text-center text-gray-500">
+                    Belum ada data produk di database.
+                  </td>
+                </tr>
+              ) : (
+                products.map((product) => (
+                  <tr
+                    key={product.id}
+                    className="border-b hover:bg-gray-50/50 transition-colors"
+                  >
+                    <td className="p-4 text-sm font-bold text-gray-600">
+                      {product.category}
+                    </td>
+                    <td className="p-4 font-bold text-gray-900">
+                      {product.name}
+                    </td>
+                    <td className="p-4 font-black text-[#1B4332]">
+                      Rp {Number(product.price).toLocaleString("id-ID")}
+                    </td>
+                    <td className="p-4 text-sm text-gray-700">
+                      {editingId === product.id ? (
+                        <textarea
+                          value={newDescription}
+                          onChange={(e) => setNewDescription(e.target.value)}
+                          className="w-full border-2 border-blue-400 focus:border-[#1B4332] p-3 rounded-xl outline-none shadow-inner bg-gray-50 font-medium text-gray-900"
+                          rows={3}
+                        />
+                      ) : (
+                        <p className="line-clamp-3 font-medium">
+                          {product.description}
+                        </p>
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      {editingId === product.id ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleUpdateDescription(product.id)}
+                            disabled={isSaving}
+                            className="p-2 bg-green-600 text-white rounded-xl shadow-md hover:bg-green-700 flex items-center justify-center"
+                            title="Simpan Deskripsi"
+                          >
+                            <Save size={16} />
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="p-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 flex items-center justify-center"
+                            title="Batal"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            startEditing(product.id, product.description)
+                          }
+                          className="px-3 py-1.5 bg-white border border-gray-200 text-[#1B4332] rounded-xl font-bold text-xs shadow-sm hover:bg-gray-50 flex items-center gap-1.5 mx-auto"
+                        >
+                          <Edit3 size={12} /> Edit Deskripsi
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <PoweredByFooter />
     </div>
   );
 }
