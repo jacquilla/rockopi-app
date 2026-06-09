@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Minus, Plus, ShoppingCart, Send, X, UserCircle2 } from "lucide-react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase"; // Ingat aturan ../../ chat ini!
+// IMPOR KOMPONEN BARU
+import PoweredByFooter from "../../components/PoweredByFooter";
 
 const mockMenu = [
   // --- HOT COFFEE ---
@@ -289,7 +291,6 @@ export default function CustomerOrderPage() {
       .join(" & ");
 
     try {
-      // 1. Simpan Transaksi Finansial ke tabel 'orders'
       const { error: orderError } = await supabase.from("orders").insert([
         {
           description: `A/N [${customerName.toUpperCase()}] - ${detailPesanan}`,
@@ -300,7 +301,6 @@ export default function CustomerOrderPage() {
 
       if (orderError) throw orderError;
 
-      // 2. OTOMATISASI STOK: Pecah dan simpan tiap item ke tabel 'inventory_logs' sebagai stok keluar (OUT)
       const inventoryPayload = activeOrderedItems.map((item) => ({
         type: "OUT",
         name: item.name,
@@ -330,7 +330,7 @@ export default function CustomerOrderPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center">
+    <div className="min-h-screen bg-[url('/bg-rockopi.avif')] bg-cover bg-fixed bg-center flex flex-col">
       {previewImage && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
@@ -355,8 +355,9 @@ export default function CustomerOrderPage() {
         </div>
       )}
 
-      <div className="min-h-screen bg-black/30 pb-36 p-4 md:p-8 pt-6 md:pt-12">
-        <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
+      {/* Kontainer Overlay Transparan */}
+      <div className="flex-1 bg-black/30 pb-16 p-4 md:p-8 pt-6 md:pt-12 flex flex-col">
+        <div className="max-w-6xl mx-auto space-y-8 md:space-y-10 w-full flex-1 flex flex-col">
           <header className="flex flex-col items-center text-center space-y-4 mb-2">
             <img
               src="/rockopi.png"
@@ -414,7 +415,7 @@ export default function CustomerOrderPage() {
           </div>
 
           {/* LIST MENU */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 flex-1">
             {filteredMenu.map((item) => {
               const qty = orderItems[item.id] || 0;
               const isExpanded = expandedDesc[item.id];
@@ -423,7 +424,7 @@ export default function CustomerOrderPage() {
               return (
                 <div
                   key={item.id}
-                  className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
+                  className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-full"
                 >
                   <div
                     className="h-36 overflow-hidden bg-gray-100 relative cursor-pointer"
@@ -447,7 +448,7 @@ export default function CustomerOrderPage() {
                     {isLongText && (
                       <button
                         onClick={() => toggleDescription(item.id)}
-                        className="text-[10px] font-bold text-[#1B4332] mt-1 self-start"
+                        className="text-[10px] font-bold text-[#1B4332] mt-1 self-start hover:text-green-800"
                       >
                         {isExpanded ? "Kurangi" : "Selengkapnya..."}
                       </button>
@@ -459,17 +460,17 @@ export default function CustomerOrderPage() {
                       <div className="flex items-center gap-2 bg-gray-50 border rounded-full p-1">
                         <button
                           onClick={() => handleDecrease(item.id)}
-                          className="w-7 h-7 rounded-full bg-white flex items-center justify-center font-bold text-gray-600 shadow-sm"
+                          className="w-7 h-7 rounded-full bg-white flex items-center justify-center font-bold text-gray-600 shadow-sm active:bg-gray-100"
                           disabled={qty === 0}
                         >
                           <Minus size={14} />
                         </button>
-                        <span className="w-4 text-center font-bold text-xs">
+                        <span className="w-4 text-center font-bold text-xs select-none">
                           {qty}
                         </span>
                         <button
                           onClick={() => handleIncrease(item.id)}
-                          className="w-7 h-7 rounded-full bg-[#1B4332] flex items-center justify-center text-white shadow-sm"
+                          className="w-7 h-7 rounded-full bg-[#1B4332] flex items-center justify-center text-white shadow-sm active:bg-green-900"
                         >
                           <Plus size={14} />
                         </button>
@@ -480,29 +481,34 @@ export default function CustomerOrderPage() {
               );
             })}
           </div>
+
+          {/* PASANG FOOTER DI BAGIAN BAWAH KONTEN ORDER */}
+          <div className="w-full pt-10">
+            <PoweredByFooter />
+          </div>
         </div>
       </div>
 
       {/* FLOATING BOTTON */}
       {totalBarang > 0 && (
         <div className="fixed bottom-4 left-0 right-0 px-4 z-50 animate-in slide-in-from-bottom-5 duration-300">
-          <div className="max-w-4xl mx-auto bg-[#1B4332] text-white rounded-2xl p-3 shadow-2xl flex items-center justify-between">
+          <div className="max-w-4xl mx-auto bg-[#1B4332] text-white rounded-2xl p-3 shadow-2xl flex items-center justify-between border border-green-800">
             <div className="flex items-center gap-3 ml-2">
               <ShoppingCart size={22} />
               <div className="flex flex-col">
                 <span className="text-[10px] text-green-200">
                   Total Harga ({totalBarang} item)
                 </span>
-                <span className="font-bold text-base">
+                <span className="font-bold text-base whitespace-nowrap">
                   Rp {totalHarga.toLocaleString("id-ID")}
                 </span>
               </div>
             </div>
             <button
               onClick={handleSubmitOrder}
-              className="bg-white text-[#1B4332] px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2"
+              className="bg-white text-[#1B4332] px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap active:bg-gray-100 transition-colors"
             >
-              Pesan <Send size={16} />
+              Pesan Sekarang <Send size={16} />
             </button>
           </div>
         </div>
