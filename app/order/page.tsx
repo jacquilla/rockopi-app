@@ -28,7 +28,6 @@ export default function CustomerOrderPage() {
 
   const categories = ["Hot Coffee", "Iced Coffee", "Non Coffee"];
 
-  // Ambil data menu secara live dari database Supabase
   const fetchMenuFromCloud = async () => {
     try {
       const { data, error } = await supabase
@@ -86,6 +85,7 @@ export default function CustomerOrderPage() {
       .join(" & ");
 
     try {
+      // Hanya mengirim data transaksi finansial dan pesanan, TIDAK ADA LAGI potong stok
       const { error: orderError } = await supabase.from("orders").insert([
         {
           description: `A/N [${customerName.toUpperCase()}] - ${detailPesanan}`,
@@ -95,20 +95,6 @@ export default function CustomerOrderPage() {
       ]);
 
       if (orderError) throw orderError;
-
-      const inventoryPayload = activeOrderedItems.map((item) => ({
-        type: "OUT",
-        name: item.name,
-        qty: orderItems[item.id],
-        unit: "cup",
-        cost: 0,
-        note: `Terjual ke A/N [${customerName.toUpperCase()}]`,
-      }));
-
-      const { error: inventoryError } = await supabase
-        .from("inventory_logs")
-        .insert(inventoryPayload);
-      if (inventoryError) throw inventoryError;
 
       alert(`Pesanan Berhasil dikirim!`);
       setOrderItems({});
@@ -150,7 +136,6 @@ export default function CustomerOrderPage() {
 
       <div className="flex-1 bg-black/30 pb-16 p-4 md:p-8 pt-6 md:pt-12 flex flex-col">
         <div className="max-w-6xl mx-auto space-y-8 md:space-y-10 w-full flex-1 flex flex-col">
-          {/* HEADER DENGAN LOGO ROCKOPI */}
           <header className="flex flex-col items-center text-center space-y-4 md:space-y-6 mb-2 md:mb-6">
             <img
               src="/rockopi.png"
