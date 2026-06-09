@@ -70,20 +70,31 @@ export default function DashboardFrontend() {
     };
   }, []);
 
-  // FUNGSI AKSI TUNGGAL (One-Click Flow)
+  // FUNGSI AKSI TUNGGAL (One-Click Flow dengan Deteksi Error)
   const handleAction = async (order: any) => {
-    if (order.production_status === "PENDING") {
-      await supabase
-        .from("orders")
-        .update({ production_status: "DONE" })
-        .eq("id", order.id);
-    } else if (order.status === "PENDING") {
-      await supabase
-        .from("orders")
-        .update({ status: "PAID" })
-        .eq("id", order.id);
+    try {
+      if (order.production_status === "PENDING") {
+        // Barista selesai membuat -> Ubah jadi DONE
+        const { error } = await supabase
+          .from("orders")
+          .update({ production_status: "DONE" })
+          .eq("id", order.id);
+        if (error) throw error;
+      } else if (order.status === "PENDING") {
+        // Kasir menerima pembayaran -> Ubah jadi PAID
+        const { error } = await supabase
+          .from("orders")
+          .update({ status: "PAID" })
+          .eq("id", order.id);
+        if (error) throw error;
+      }
+
+      // Muat ulang data setelah sukses di-update
+      fetchOrders();
+    } catch (err: any) {
+      // Akan memunculkan pesan jika ada pemblokiran dari Supabase
+      alert(`Gagal memperbarui status: ${err.message}`);
     }
-    fetchOrders();
   };
 
   const handleDelete = async (id: number) => {
