@@ -275,6 +275,11 @@ export default function CustomerOrderPage() {
       .filter((item) => orderItems[item.id] > 0)
       .map((item) => `${orderItems[item.id]}x ${item.name}`)
       .join(" & ");
+    console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log(
+      "KEY:",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20),
+    );
 
     // Jalankan query Insert ke cloud database
     const { error } = await supabase.from("orders").insert([
