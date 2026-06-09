@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
-import { supabase } from "../lib/supabase"; // Koneksi Supabase
+import { supabase } from "../../lib/supabase"; // Koneksi Supabase
 
 // Memastikan halaman selalu diperbarui secara dinamis di Vercel
 export const dynamic = "force-dynamic";
