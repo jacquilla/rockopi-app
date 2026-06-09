@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Settings,
-  Shield,
-  Palette,
-  Smartphone,
-  Globe,
-  Instagram,
-} from "lucide-react";
+import { Palette, Smartphone, Share2 } from "lucide-react";
 import PoweredByFooter from "../../../components/PoweredByFooter";
 
 export default function SettingsPage() {
@@ -48,11 +41,13 @@ export default function SettingsPage() {
 
             <div className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 hover:bg-white/15 transition-all cursor-pointer group">
               <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-6 text-purple-300 group-hover:scale-110 transition-transform">
-                <Instagram size={24} />
+                {/* Mengganti Instagram dengan Share2 di sini */}
+                <Share2 size={24} />
               </div>
               <h3 className="text-xl font-bold mb-2">Sosial Media</h3>
               <p className="text-sm text-gray-300 leading-relaxed">
-                Hubungkan link Instagram Digi Business untuk promosi otomatis.
+                Hubungkan link sosial media Digi Business untuk promosi
+                otomatis.
               </p>
             </div>
           </div>
