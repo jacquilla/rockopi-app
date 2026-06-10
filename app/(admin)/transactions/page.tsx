@@ -12,7 +12,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
 } from "lucide-react";
-import PoweredByFooter from "../../components/PoweredByFooter";
+import PoweredByFooter from "../../../components/PoweredByFooter";
 
 export const dynamic = "force-dynamic";
 
