@@ -19,8 +19,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { lock } = useLock(); // Memanggil fungsi pengunci layar
-  const { theme } = useTheme(); // Memanggil warna tema yang sedang aktif
+  const { lock } = useLock();
+  const { theme } = useTheme();
 
   const menuItems = [
     { name: "Dashboard", path: "/", icon: <LayoutDashboard size={22} /> },
@@ -31,7 +31,6 @@ export default function AdminLayout({
   ];
 
   return (
-    // Latar belakang sekarang selaras dengan Tema Dinamis
     <div
       className="flex flex-col md:flex-row h-screen text-white overflow-hidden font-sans transition-colors duration-500"
       style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
@@ -42,17 +41,18 @@ export default function AdminLayout({
         style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
       >
         <div>
-          <h1 className="text-xl font-black tracking-widest text-white drop-shadow-md">
-            ROCKOPI
-          </h1>
+          <img
+            src="/logo.png"
+            alt="Rockopi Logo"
+            className="h-8 w-auto object-contain drop-shadow-md"
+          />
           <p
-            className="text-[8px] font-bold tracking-[0.2em] mt-0.5"
+            className="text-[8px] font-bold tracking-[0.2em] mt-1"
             style={{ color: theme.primary || "#4ade80" }}
           >
             WAREHOUSE PANEL
           </p>
         </div>
-        {/* Tombol Kunci Aktif */}
         <button
           onClick={lock}
           className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-colors active:scale-95"
@@ -66,33 +66,14 @@ export default function AdminLayout({
         className="hidden md:flex w-64 border-r border-white/5 flex-col shadow-2xl z-20 relative"
         style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
       >
-        // Ganti bagian header di dalam <aside> (Desktop)
         <div className="p-7">
           <img
             src="/logo.png"
             alt="Rockopi Logo"
             className="h-10 w-auto object-contain drop-shadow-md"
           />
-          <p className="text-[10px] font-bold tracking-[0.25em] mt-3" style={{ color: theme.primary || '#4ade80' }}>WAREHOUSE PANEL</p>
-        </div>
-
-        // Ganti bagian header di <header> (Mobile)
-        <header className="md:hidden border-b border-white/10 p-4 flex items-center justify-between z-20 shadow-md" style={{ backgroundColor: theme.bodyBg || '#0a1f16' }}>
-          <div>
-            <img
-              src="/logo.png"
-              alt="Rockopi Logo"
-              className="h-8 w-auto object-contain drop-shadow-md"
-            />
-            <p className="text-[8px] font-bold tracking-[0.2em] mt-1" style={{ color: theme.primary || '#4ade80' }}>WAREHOUSE PANEL</p>
-          </div>
-          {/* Tombol Kunci Aktif */}
-          <button onClick={lock} className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-colors active:scale-95">
-            <Lock size={18} />
-          </button>
-        </header>
           <p
-            className="text-[10px] font-bold tracking-[0.25em] mt-1.5"
+            className="text-[10px] font-bold tracking-[0.25em] mt-3"
             style={{ color: theme.primary || "#4ade80" }}
           >
             WAREHOUSE PANEL
@@ -110,7 +91,6 @@ export default function AdminLayout({
                       ? "text-white font-bold shadow-lg border border-white/10"
                       : "text-gray-400 hover:text-white hover:bg-white/5 font-medium"
                   }`}
-                  // Kotak menu yang aktif akan berubah warnanya sesuai Tema
                   style={{
                     backgroundColor: isActive
                       ? theme.primary || "#1B4332"
@@ -130,7 +110,6 @@ export default function AdminLayout({
         </nav>
 
         <div className="p-4 border-t border-white/5 bg-black/20">
-          {/* Tombol Kunci Aktif */}
           <button
             onClick={lock}
             className="flex items-center justify-center gap-3 text-red-500 hover:text-red-400 hover:bg-red-500/10 px-4 py-3 w-full rounded-xl text-sm font-bold transition-colors active:scale-95"
