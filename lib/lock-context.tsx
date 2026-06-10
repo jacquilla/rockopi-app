@@ -1,132 +1,147 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { Lock, Loader2 } from "lucide-react";
 
-interface LockContextType {
+type LockContextType = {
   isLocked: boolean;
   lock: () => void;
-  unlock: (pin: string) => boolean;
-  wrongPinCount: number;
-}
+};
 
-const LockContext = createContext<LockContextType>({
-  isLocked: false,
-  lock: () => {},
-  unlock: () => false,
-  wrongPinCount: 0,
-});
-
-export const useLock = () => useContext(LockContext);
-
-const LOCK_KEY = "rockopi_lock";
-const LAST_ACTIVE_KEY = "rockopi_last_active";
-const PIN_KEY = "rockopi_cached_pin";
-const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const LockContext = createContext<LockContextType | undefined>(undefined);
 
 export function LockProvider({ children }: { children: React.ReactNode }) {
-  const [isLocked, setIsLocked] = useState(true);
-  const [wrongPinCount, setWrongPinCount] = useState(0);
-  const [cachedPin, setCachedPin] = useState("");
+  const [isLocked, setIsLocked] = useState(false);
+  const [inputPin, setInputPin] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState("");
 
-  // Fetch PIN from Supabase
-  const fetchPin = useCallback(async () => {
-    try {
-      const { data } = await supabase
-        .from("admin_settings")
-        .select("value")
-        .eq("key", "admin_pin")
-        .maybeSingle();
-      if (data?.value) {
-        setCachedPin(data.value);
-        localStorage.setItem(PIN_KEY, data.value);
-      }
-    } catch {
-      const stored = localStorage.getItem(PIN_KEY);
-      if (stored) setCachedPin(stored);
-    }
-  }, []);
-
+  // Sistem Auto-lock (Aplikasi akan mengunci sendiri jika 5 menit tidak disentuh)
   useEffect(() => {
-    fetchPin();
-  }, [fetchPin]);
-
-  useEffect(() => {
-    const wasLocked = localStorage.getItem(LOCK_KEY) === "true";
-    if (wasLocked) {
-      setIsLocked(true);
-    } else {
-      const hasUnlocked = localStorage.getItem(LOCK_KEY) === "false";
-      setIsLocked(!hasUnlocked);
-      if (!hasUnlocked) localStorage.setItem(LOCK_KEY, "true");
-    }
-
-    const lastActive = localStorage.getItem(LAST_ACTIVE_KEY);
-    if (lastActive) {
-      const elapsed = Date.now() - parseInt(lastActive, 10);
-      if (elapsed > IDLE_TIMEOUT) {
-        setIsLocked(true);
-        localStorage.setItem(LOCK_KEY, "true");
-      }
-    }
-  }, []);
-
-  // Idle timeout tracker
-  useEffect(() => {
-    if (isLocked) return;
-
-    const updateActivity = () => {
-      localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
+    let timeout: NodeJS.Timeout;
+    const reset = () => {
+      clearTimeout(timeout);
+      if (!isLocked)
+        timeout = setTimeout(() => setIsLocked(true), 5 * 60 * 1000);
     };
-
-    const checkIdle = () => {
-      const lastActive = localStorage.getItem(LAST_ACTIVE_KEY);
-      if (lastActive) {
-        const elapsed = Date.now() - parseInt(lastActive, 10);
-        if (elapsed > IDLE_TIMEOUT) {
-          lock();
-        }
-      }
-    };
-
-    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
-    events.forEach((e) => window.addEventListener(e, updateActivity));
-
-    updateActivity();
-    const interval = setInterval(checkIdle, 30000);
-
+    window.addEventListener("mousemove", reset);
+    window.addEventListener("keydown", reset);
+    window.addEventListener("click", reset);
+    window.addEventListener("touchstart", reset);
+    reset();
     return () => {
-      events.forEach((e) => window.removeEventListener(e, updateActivity));
-      clearInterval(interval);
+      window.removeEventListener("mousemove", reset);
+      window.removeEventListener("keydown", reset);
+      window.removeEventListener("click", reset);
+      window.removeEventListener("touchstart", reset);
+      clearTimeout(timeout);
     };
   }, [isLocked]);
 
-  const lock = useCallback(() => {
+  // Fungsi untuk memicu layar kunci secara manual (Dipanggil oleh tombol Kunci)
+  const lock = () => {
     setIsLocked(true);
-    setWrongPinCount(0);
-    localStorage.setItem(LOCK_KEY, "true");
-    localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
-  }, []);
+    setInputPin("");
+    setError("");
+  };
 
-  const unlock = useCallback(
-    (pin: string) => {
-      const validPin = cachedPin || localStorage.getItem(PIN_KEY) || "123456";
-      if (pin === validPin) {
+  // Fungsi untuk memverifikasi PIN ke Database Supabase
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputPin.length !== 6) return;
+
+    setIsVerifying(true);
+    setError("");
+
+    try {
+      const { data, error: dbError } = await supabase
+        .from("admin_settings")
+        .select("value")
+        .eq("key", "admin_pin")
+        .single();
+
+      if (dbError) throw dbError;
+
+      // Jika PIN cocok dengan database, buka kuncinya!
+      if (data && data.value === inputPin) {
         setIsLocked(false);
-        setWrongPinCount(0);
-        localStorage.setItem(LOCK_KEY, "false");
-        localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
-        return true;
+        setInputPin("");
+      } else {
+        setError("PIN Salah. Akses Ditolak!");
+        setInputPin("");
       }
-      setWrongPinCount((prev) => prev + 1);
-      return false;
-    },
-    [cachedPin]
-  );
+    } catch (err) {
+      setError("Gagal terhubung ke server keamanan.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   return (
-    <LockContext.Provider value={{ isLocked, lock, unlock, wrongPinCount }}>
+    <LockContext.Provider value={{ isLocked, lock }}>
       {children}
+
+      {/* LAYAR OVERLAY SAAT TERKUNCI (UI ESTETIK) */}
+      {isLocked && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#07110a]/95 backdrop-blur-xl p-4">
+          <div className="w-full max-w-sm flex flex-col items-center animate-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-6 border border-green-500/20 shadow-[0_0_50px_rgba(34,197,94,0.15)]">
+              <Lock size={32} className="text-green-400" />
+            </div>
+
+            <h2 className="text-2xl font-black text-white tracking-widest mb-2">
+              SISTEM TERKUNCI
+            </h2>
+            <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-8 text-center">
+              Masukkan PIN untuk membuka akses
+            </p>
+
+            <form onSubmit={handleUnlock} className="w-full space-y-6">
+              <div className="space-y-2 text-center">
+                <input
+                  type="password"
+                  maxLength={6}
+                  autoFocus
+                  value={inputPin}
+                  onChange={(e) => {
+                    setError("");
+                    setInputPin(e.target.value.replace(/\D/g, ""));
+                  }}
+                  className="w-full bg-black/40 text-green-400 font-black px-4 py-4 rounded-2xl border border-white/10 focus:border-green-400/50 outline-none text-center tracking-[1.5em] text-2xl transition-all"
+                  placeholder="------"
+                  disabled={isVerifying}
+                  required
+                />
+                {error && (
+                  <p className="text-red-400 text-xs font-bold animate-pulse">
+                    {error}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isVerifying || inputPin.length !== 6}
+                className="w-full bg-green-500 hover:bg-green-400 text-black font-black py-4 rounded-xl text-sm transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isVerifying ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  "BUKA BRANKAS"
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </LockContext.Provider>
   );
 }
+
+// Hook kustom agar tombol Kunci di Sidebar bisa memanggil fungsi lock()
+export const useLock = () => {
+  const context = useContext(LockContext);
+  if (!context) throw new Error("useLock must be used within LockProvider");
+  return context;
+};
