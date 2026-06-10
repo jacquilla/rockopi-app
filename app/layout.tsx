@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import "./globals.css"; // Ini adalah nyawa utama desain aplikasi Anda!
+import "./globals.css";
+import { ThemeProvider } from "@/lib/theme-context";
+import { LockProvider } from "@/lib/lock-context";
 
 export const metadata: Metadata = {
   title: "Rockopi",
@@ -17,7 +19,10 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="bg-gray-50 text-gray-900 font-sans min-h-screen">
-        {children}
+        {/* Mengaktifkan kembali layar PIN dan Tema Dinamis */}
+        <ThemeProvider>
+          <LockProvider>{children}</LockProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
