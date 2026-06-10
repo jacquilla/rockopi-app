@@ -1,5 +1,5 @@
 "use client";
-
+import { useState, useEffect, useRef } from "react";
 import { useState, useEffect } from "react";
 import {
   ChefHat,
@@ -51,7 +51,37 @@ function LiveClock() {
       </div>
     </div>
   );
-}
+} // Gunakan useRef untuk menyimpan jumlah antrean tanpa mengganggu render UI
+const prevPendingCount = useRef(0);
+
+useEffect(() => {
+  // Hitung jumlah pesanan yang berstatus PENDING (Antrean baru)
+  const currentPendingCount = orders.filter(
+    (o) => o.status === "PENDING",
+  ).length;
+
+  // Jika antrean baru lebih banyak dari sebelumnya, bunyikan alarm!
+  if (
+    currentPendingCount > prevPendingCount.current &&
+    prevPendingCount.current !== 0
+  ) {
+    try {
+      // PERBAIKAN: Nama file disesuaikan dengan yang ada di folder public
+      const audio = new Audio("/notification.mp3");
+      audio.play().catch((error) => {
+        console.warn(
+          "Browser memblokir suara. Ingatkan kasir untuk klik layar minimal 1x:",
+          error,
+        );
+      });
+    } catch (err) {
+      console.error("Gagal memutar audio", err);
+    }
+  }
+
+  // Perbarui memori jumlah antrean sebelumnya
+  prevPendingCount.current = currentPendingCount;
+}, [orders]);
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
