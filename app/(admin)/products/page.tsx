@@ -1,168 +1,166 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Store, CreditCard as Edit3, Save, X, RefreshCw } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import type { Product } from "@/lib/types";
-import PoweredByFooter from "@/components/PoweredByFooter";
+import { Edit3, Save, X, Search, Package, Loader2 } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
+import PoweredByFooter from "../../../components/PoweredByFooter";
 
-export const dynamic = "force-dynamic";
-
-export default function MasterProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function ProductsPage() {
+  const [products, setProducts] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [newDescription, setNewDescription] = useState("");
+  const [editDesc, setEditDesc] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchProducts = async () => {
     setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("category", { ascending: true });
-
-      if (error) throw error;
-      setProducts((data || []) as Product[]);
-    } catch (err) {
-      alert("Gagal mengambil data produk");
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
+    const { data } = await supabase.from("products").select("*").order("id");
+    if (data) setProducts(data);
+    setIsLoading(false);
   };
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  const startEditing = (id: number, currentDesc: string) => {
+  const filtered = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const startEdit = (id: number, desc: string) => {
     setEditingId(id);
-    setNewDescription(currentDesc);
+    setEditDesc(desc);
   };
 
-  const handleUpdate = async (id: number) => {
-    if (!newDescription.trim()) return;
+  const handleSave = async (id: number) => {
+    if (!editDesc.trim()) return;
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      await supabase
         .from("products")
-        .update({ description: newDescription.trim() })
+        .update({ description: editDesc })
         .eq("id", id);
-
-      if (error) throw error;
-      setEditingId(null);
       await fetchProducts();
+      setEditingId(null);
     } catch (err) {
-      alert("Gagal memperbarui deskripsi");
-      console.error(err);
+      alert("Gagal menyimpan deskripsi.");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto flex flex-col min-h-[calc(100vh-4rem)] pb-12 px-4 md:px-0">
-      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-white/20 backdrop-blur-md text-white rounded-lg shadow-sm border border-white/30">
-            <Store size={24} />
-          </div>
+    <div className="min-h-full flex flex-col font-sans bg-[#07110a]/90 backdrop-blur-md">
+      <div className="flex-1 p-4 md:p-7 flex flex-col gap-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-white drop-shadow-md">Master Produk Rockopi</h2>
-            <p className="text-gray-200 font-medium text-sm mt-0.5 drop-shadow-sm">
-              Kelola informasi menu dan sinkronisasikan langsung ke device pelanggan.
+            <h2 className="text-2xl font-black text-white flex items-center gap-2">
+              <Package className="text-green-400" /> Master Produk
+            </h2>
+            <p className="text-white/40 text-xs mt-1">
+              Kelola daftar menu dan deskripsi produk Rockopi
             </p>
           </div>
+          <div className="relative w-full sm:w-auto">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
+            />
+            <input
+              type="text"
+              placeholder="Cari nama menu..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full sm:w-64 bg-white/5 text-white pl-9 pr-4 py-2.5 rounded-xl border border-white/10 focus:border-green-400/50 outline-none text-xs transition-all placeholder:text-white/20"
+            />
+          </div>
         </div>
-        <button
-          onClick={fetchProducts}
-          className="p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm text-[#1B4332] hover:bg-gray-50 flex items-center gap-2 text-sm font-bold transition-all active:scale-95"
-        >
-          <RefreshCw size={16} /> Refresh
-        </button>
-      </header>
 
-      <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl border border-white/40 overflow-hidden flex-1">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[700px]">
-            <thead className="bg-[#1B4332] text-white">
-              <tr className="text-sm">
-                <th className="p-4 font-bold w-32">Kategori</th>
-                <th className="p-4 font-bold w-48">Nama Menu</th>
-                <th className="p-4 font-bold w-32">Harga</th>
-                <th className="p-4 font-bold">Deskripsi Menu</th>
-                <th className="p-4 font-bold text-center w-36">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="p-12 text-center text-gray-500 font-bold">
-                    Sinkronisasi produk cloud...
-                  </td>
-                </tr>
-              ) : products.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-12 text-center text-gray-500">
-                    Belum ada data produk di database.
-                  </td>
-                </tr>
-              ) : (
-                products.map((product) => (
-                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors">
-                    <td className="p-4 text-sm font-bold text-gray-500">{product.category}</td>
-                    <td className="p-4 font-bold text-gray-900">{product.name}</td>
-                    <td className="p-4 font-black text-[#1B4332]">
-                      Rp {product.price.toLocaleString("id-ID")}
-                    </td>
-                    <td className="p-4 text-sm text-gray-700">
-                      {editingId === product.id ? (
-                        <textarea
-                          value={newDescription}
-                          onChange={(e) => setNewDescription(e.target.value)}
-                          className="w-full border-2 border-blue-400 focus:border-[#1B4332] p-3 rounded-xl outline-none shadow-inner bg-gray-50 font-medium text-gray-900"
-                          rows={3}
-                        />
-                      ) : (
-                        <p className="line-clamp-3 font-medium leading-relaxed">{product.description}</p>
-                      )}
-                    </td>
-                    <td className="p-4 text-center">
-                      {editingId === product.id ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleUpdate(product.id)}
-                            disabled={isSaving}
-                            className="p-2.5 bg-green-600 text-white rounded-xl shadow-md hover:bg-green-700 flex items-center justify-center transition-colors active:scale-95 disabled:opacity-50"
-                          >
-                            <Save size={16} />
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="p-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 flex items-center justify-center transition-colors active:scale-95"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="animate-spin text-green-400" size={32} />
+            <p className="text-green-400/60 text-xs font-bold uppercase tracking-widest">
+              Memuat Menu...
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map((p) => (
+              <div
+                key={p.id}
+                className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col group"
+              >
+                <div className="flex items-center gap-4 p-4 border-b border-white/5 bg-black/20">
+                  <div className="w-12 h-12 rounded-xl bg-black/40 overflow-hidden border border-white/10">
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-black text-white text-sm">{p.name}</p>
+                    <p className="text-green-400 font-bold text-xs">
+                      Rp {p.price.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4 flex-1 flex flex-col">
+                  <div className="mb-3">
+                    <span className="inline-block px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-white/5 text-white/40 border border-white/10">
+                      {p.category}
+                    </span>
+                  </div>
+
+                  {editingId === p.id ? (
+                    <div className="space-y-2 mt-auto">
+                      <textarea
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        className="w-full bg-black/40 text-white px-3 py-2 rounded-xl border border-green-400/30 outline-none text-xs resize-none"
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => startEditing(product.id, product.description)}
-                          className="px-3 py-2 bg-white border border-gray-200 text-[#1B4332] rounded-xl font-bold text-xs shadow-sm hover:bg-gray-50 flex items-center gap-1.5 mx-auto transition-all active:scale-95"
+                          onClick={() => handleSave(p.id)}
+                          disabled={isSaving}
+                          className="flex-1 py-2 bg-green-500 hover:bg-green-400 rounded-lg text-black text-xs font-bold transition-all disabled:opacity-50"
                         >
-                          <Edit3 size={14} /> Edit
+                          {isSaving ? "Menyimpan..." : "Simpan"}
                         </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 transition-all"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-white/40 text-xs leading-relaxed line-clamp-2">
+                        {p.description}
+                      </p>
+                      <button
+                        onClick={() => startEdit(p.id, p.description)}
+                        className="w-full py-2 mt-auto bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/40 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Edit3 size={12} /> Edit Deskripsi
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-auto pt-4">
+          <PoweredByFooter />
         </div>
       </div>
-      <PoweredByFooter />
     </div>
   );
 }
