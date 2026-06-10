@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect, useRef } from "react";
 import {
   ChefHat,
@@ -15,6 +16,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import PoweredByFooter from "../../components/PoweredByFooter";
 
+// --- FUNGSI BANTUAN ---
 function getCustomerName(desc: string) {
   const m = desc.match(/A\/N \[(.*?)\]/);
   return m ? m[1] : "Pelanggan Umum";
@@ -50,43 +52,47 @@ function LiveClock() {
       </div>
     </div>
   );
-} // Gunakan useRef untuk menyimpan jumlah antrean tanpa mengganggu render UI
-const prevPendingCount = useRef(0);
+}
 
-useEffect(() => {
-  // Hitung jumlah pesanan yang berstatus PENDING (Antrean baru)
-  const currentPendingCount = orders.filter(
-    (o) => o.status === "PENDING",
-  ).length;
-
-  // Jika antrean baru lebih banyak dari sebelumnya, bunyikan alarm!
-  if (
-    currentPendingCount > prevPendingCount.current &&
-    prevPendingCount.current !== 0
-  ) {
-    try {
-      // PERBAIKAN: Nama file disesuaikan dengan yang ada di folder public
-      const audio = new Audio("/notification.mp3");
-      audio.play().catch((error) => {
-        console.warn(
-          "Browser memblokir suara. Ingatkan kasir untuk klik layar minimal 1x:",
-          error,
-        );
-      });
-    } catch (err) {
-      console.error("Gagal memutar audio", err);
-    }
-  }
-
-  // Perbarui memori jumlah antrean sebelumnya
-  prevPendingCount.current = currentPendingCount;
-}, [orders]);
-
+// --- KOMPONEN UTAMA DASHBOARD ---
 export default function DashboardPage() {
+  // 1. Inisialisasi State & Variabel terlebih dahulu
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<number | null>(null);
 
+  // 2. Mesin Notifikasi Audio diletakkan DI BAWAH variabel 'orders'
+  const prevPendingCount = useRef(0);
+
+  useEffect(() => {
+    // Hitung jumlah pesanan yang berstatus PENDING (Antrean baru)
+    const currentPendingCount = orders.filter(
+      (o) => o.status === "PENDING",
+    ).length;
+
+    // Jika antrean baru lebih banyak dari sebelumnya, bunyikan alarm!
+    if (
+      currentPendingCount > prevPendingCount.current &&
+      prevPendingCount.current !== 0
+    ) {
+      try {
+        const audio = new Audio("/notification.mp3");
+        audio.play().catch((error) => {
+          console.warn(
+            "Browser memblokir suara. Ingatkan kasir untuk klik layar minimal 1x:",
+            error,
+          );
+        });
+      } catch (err) {
+        console.error("Gagal memutar audio", err);
+      }
+    }
+
+    // Perbarui memori jumlah antrean sebelumnya
+    prevPendingCount.current = currentPendingCount;
+  }, [orders]); // Effect ini bergantung pada perubahan isi 'orders'
+
+  // 3. Mesin Penarik Data dari Supabase
   const fetchOrders = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -110,7 +116,6 @@ export default function DashboardPage() {
 
   const handleAction = async (order: any) => {
     setIsUpdating(order.id);
-    // Mengubah PENDING menjadi READY (Siap diantar), dan READY menjadi PAID (Selesai/Lunas)
     const nextStatus = order.status === "PENDING" ? "READY" : "PAID";
     await supabase
       .from("orders")
@@ -146,7 +151,7 @@ export default function DashboardPage() {
           <LiveClock />
         </div>
 
-        {/* Quick Stats UI Figma */}
+        {/* Quick Stats UI */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col">
             <Users size={16} className="text-blue-400 mb-2" />
@@ -168,7 +173,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Order Grid UI Figma */}
+        {/* Order Grid UI */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="animate-spin text-green-400" size={32} />
