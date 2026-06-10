@@ -66,10 +66,31 @@ export default function AdminLayout({
         className="hidden md:flex w-64 border-r border-white/5 flex-col shadow-2xl z-20 relative"
         style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
       >
+        // Ganti bagian header di dalam <aside> (Desktop)
         <div className="p-7">
-          <h1 className="text-3xl font-black tracking-widest text-white drop-shadow-md">
-            ROCKOPI
-          </h1>
+          <img
+            src="/logo.png"
+            alt="Rockopi Logo"
+            className="h-10 w-auto object-contain drop-shadow-md"
+          />
+          <p className="text-[10px] font-bold tracking-[0.25em] mt-3" style={{ color: theme.primary || '#4ade80' }}>WAREHOUSE PANEL</p>
+        </div>
+
+        // Ganti bagian header di <header> (Mobile)
+        <header className="md:hidden border-b border-white/10 p-4 flex items-center justify-between z-20 shadow-md" style={{ backgroundColor: theme.bodyBg || '#0a1f16' }}>
+          <div>
+            <img
+              src="/logo.png"
+              alt="Rockopi Logo"
+              className="h-8 w-auto object-contain drop-shadow-md"
+            />
+            <p className="text-[8px] font-bold tracking-[0.2em] mt-1" style={{ color: theme.primary || '#4ade80' }}>WAREHOUSE PANEL</p>
+          </div>
+          {/* Tombol Kunci Aktif */}
+          <button onClick={lock} className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-colors active:scale-95">
+            <Lock size={18} />
+          </button>
+        </header>
           <p
             className="text-[10px] font-bold tracking-[0.25em] mt-1.5"
             style={{ color: theme.primary || "#4ade80" }}
