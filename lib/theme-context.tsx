@@ -1,112 +1,89 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 
-export interface Theme {
-  name: string;
-  primary: string;
-  primaryDark: string;
-  bgDark: string;
-  bgCard: string;
-  bgOverlay: string;
-  textAccent: string;
-  textHeading: string;
-  bodyBg: string;
-  font: string;
-  borderColor: string;
-}
-
-export const THEMES: Theme[] = [
+// Koleksi Eksklusif Palet Warna Barista & Dunia Kopi
+export const THEMES = [
   {
-    name: "Rockopi Classic",
-    primary: "#1B4332",
-    primaryDark: "#0d261b",
-    bgDark: "#0a1f16",
-    bgCard: "white/10",
-    bgOverlay: "black/50",
-    textAccent: "green-400",
-    textHeading: "white",
-    bodyBg: "#0a1f16",
-    font: "ui-sans-serif, system-ui, sans-serif",
-    borderColor: "white/20",
+    name: "Rockopi Original",
+    primary: "#4ade80", // Neon Emerald (Identitas hijau legendaris Rockopi)
+    bodyBg: "#07110a", // Hitam dengan aura hijau pekat
   },
   {
-    name: "Brewhaus Cream",
-    primary: "#1B5E3D",
-    primaryDark: "#123D28",
-    bgDark: "#F5F0E0",
-    bgCard: "#E8E0D0",
-    bgOverlay: "#F5F0E0/95",
-    textAccent: "#1B5E3D",
-    textHeading: "#1B5E3D",
-    bodyBg: "#F5F0E0",
-    font: "'Playfair Display', Georgia, serif",
-    borderColor: "#1B5E3D/20",
+    name: "Golden Macchiato",
+    primary: "#fbbf24", // Rich Gold/Amber (Mewah, hangat, dan kontras tinggi)
+    bodyBg: "#0f0a00", // Hitam dengan aura cokelat espresso
   },
   {
-    name: "Midnight Espresso",
-    primary: "#2C1A1A",
-    primaryDark: "#1A0F0F",
-    bgDark: "#1A0F0F",
-    bgCard: "#2C1A1A/80",
-    bgOverlay: "#1A0F0F/95",
-    textAccent: "#D4A574",
-    textHeading: "#F5F0E0",
-    bodyBg: "#1A0F0F",
-    font: "ui-sans-serif, system-ui, sans-serif",
-    borderColor: "#D4A574/20",
+    name: "Crimson Robusta",
+    primary: "#f87171", // Soft Crimson (Karakter berani, premium, dan elegan)
+    bodyBg: "#0f0505", // Hitam dengan aura marun pekat
   },
   {
-    name: "Ocean Breeze",
-    primary: "#0B3D4C",
-    primaryDark: "#072A35",
-    bgDark: "#0F2F3D",
-    bgCard: "#0B3D4C/60",
-    bgOverlay: "#0F2F3D/95",
-    textAccent: "#5DADE2",
-    textHeading: "#E8F4F8",
-    bodyBg: "#0F2F3D",
-    font: "ui-sans-serif, system-ui, sans-serif",
-    borderColor: "#5DADE2/20",
+    name: "Caramel Crema",
+    primary: "#fb923c", // Warm Caramel (Lembut, retro, dan estetik)
+    bodyBg: "#0f0700", // Hitam dengan aura karamel bakar
+  },
+  {
+    name: "Midnight Brew",
+    primary: "#60a5fa", // Electric Blue (Sangat futuristik ala kedai kopi modern)
+    bodyBg: "#00050f", // Hitam dengan aura navy malam
+  },
+  {
+    name: "Velvet Espresso",
+    primary: "#c084fc", // Amethyst Purple (Eksklusif, misterius, dan artistik)
+    bodyBg: "#0a000f", // Hitam dengan aura taro pekat
+  },
+  {
+    name: "Matcha Affogato",
+    primary: "#a3e635", // Luminous Lime (Segar, earthy, mirip es krim matcha premium)
+    bodyBg: "#081000", // Hitam dengan aura teh hijau pekat
+  },
+  {
+    name: "Mint Peppermint",
+    primary: "#2dd4bf", // Deep Teal/Cyan (Adem, bersih, terinspirasi sirup mint)
+    bodyBg: "#00100d", // Hitam dengan aura batu giok / mint pekat
+  },
+  {
+    name: "Berry Cold Foam",
+    primary: "#f472b6", // Soft Fuchsia/Pink (Manis, modern, mencolok di malam hari)
+    bodyBg: "#100007", // Hitam dengan aura buah beri gelap
+  },
+  {
+    name: "Charcoal Cold Brew",
+    primary: "#9ca3af", // Industrial Platinum (Sangat minimalis, bersih, profesional)
+    bodyBg: "#0e0f11", // Hitam abu-abu besi atau arang aktif
   },
 ];
 
-interface ThemeContextType {
+export type Theme = (typeof THEMES)[0];
+
+type ThemeContextType = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   themeIndex: number;
-}
+};
 
-const ThemeContext = createContext<ThemeContextType>({
-  theme: THEMES[0],
-  setTheme: () => {},
-  themeIndex: 0,
-});
-
-export const useTheme = () => useContext(ThemeContext);
-
-const THEME_KEY = "rockopi_theme";
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [themeIndex, setThemeIndex] = useState(0);
+  const [theme, setThemeState] = useState<Theme>(THEMES[0]);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(THEME_KEY);
-    if (stored) {
-      const idx = parseInt(stored, 10);
-      if (idx >= 0 && idx < THEMES.length) setThemeIndex(idx);
-    }
-  }, []);
-
-  const setTheme = (t: Theme) => {
-    const idx = THEMES.indexOf(t);
-    setThemeIndex(idx);
-    localStorage.setItem(THEME_KEY, idx.toString());
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
   };
 
+  const themeIndex = THEMES.findIndex((t) => t.name === theme.name);
+
   return (
-    <ThemeContext.Provider value={{ theme: THEMES[themeIndex], setTheme, themeIndex }}>
+    <ThemeContext.Provider value={{ theme, setTheme, themeIndex }}>
       {children}
     </ThemeContext.Provider>
   );
 }
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) throw new Error("useTheme must be used within ThemeProvider");
+  return context;
+};
