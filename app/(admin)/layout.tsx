@@ -33,12 +33,12 @@ export default function AdminLayout({
   return (
     <div
       className="flex flex-col md:flex-row h-screen text-white overflow-hidden font-sans transition-colors duration-500"
-      style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
+      style={{ backgroundColor: theme.bodyBg || "#07110a" }}
     >
       {/* 1. HEADER MOBILE */}
       <header
         className="md:hidden border-b border-white/10 p-4 flex items-center justify-between z-20 shadow-md"
-        style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
+        style={{ backgroundColor: theme.bodyBg || "#07110a" }}
       >
         <div>
           <img
@@ -64,7 +64,7 @@ export default function AdminLayout({
       {/* 2. SIDEBAR DESKTOP */}
       <aside
         className="hidden md:flex w-64 border-r border-white/5 flex-col shadow-2xl z-20 relative"
-        style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
+        style={{ backgroundColor: theme.bodyBg || "#07110a" }}
       >
         <div className="p-7">
           <img
@@ -93,7 +93,7 @@ export default function AdminLayout({
                   }`}
                   style={{
                     backgroundColor: isActive
-                      ? theme.primary || "#1B4332"
+                      ? theme.primary || "#4ade80"
                       : "transparent",
                   }}
                 >
@@ -115,10 +115,10 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* 3. KONTEN */}
+      {/* 3. KONTEN (Otomatis tertutup rapi oleh overlay LockProvider jika belum input PIN) */}
       <main
         className="flex-1 overflow-y-auto relative pb-24 md:pb-0"
-        style={{ backgroundColor: theme.bodyBg || "#0a1f16" }}
+        style={{ backgroundColor: theme.bodyBg || "#07110a" }}
       >
         {children}
       </main>
