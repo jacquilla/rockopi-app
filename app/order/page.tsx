@@ -184,10 +184,10 @@ export default function OrderPage() {
                     className="flex justify-between items-center bg-white/5 p-3 rounded-2xl border border-white/5"
                   >
                     <div className="flex-1 pr-4">
-                      <p className="text-white font-bold text-sm leading-tight mb-1">
+                      <p className="text-white font-bold text-base leading-tight mb-1">
                         {p.name}
                       </p>
-                      <p className="text-green-400 font-bold text-xs">
+                      <p className="text-green-400 font-bold text-sm">
                         Rp {p.price.toLocaleString("id-ID")}
                       </p>
                     </div>
@@ -198,7 +198,7 @@ export default function OrderPage() {
                       >
                         <Minus size={16} />
                       </button>
-                      <span className="text-white font-black text-sm w-4 text-center">
+                      <span className="text-white font-black text-base w-4 text-center">
                         {orderItems[p.id]}
                       </span>
                       <button
@@ -214,17 +214,17 @@ export default function OrderPage() {
 
             <div className="p-5 border-t border-white/10 bg-black/20 pb-8 sm:pb-5">
               <div className="flex justify-between items-center mb-5">
-                <span className="text-white/60 text-xs font-bold uppercase tracking-widest">
+                <span className="text-white/60 text-sm font-bold uppercase tracking-widest">
                   Total Bayar
                 </span>
-                <span className="text-white font-black text-xl">
+                <span className="text-white font-black text-2xl">
                   Rp {totalPrice.toLocaleString("id-ID")}
                 </span>
               </div>
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="w-full bg-green-500 text-black py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-green-400 active:scale-95 transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] disabled:opacity-50"
+                className="w-full bg-green-500 text-black py-4 rounded-2xl font-black text-base uppercase tracking-widest hover:bg-green-400 active:scale-95 transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" size={18} />
@@ -256,7 +256,7 @@ export default function OrderPage() {
               alt="Logo Rockopi"
               className="h-8 object-contain drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
             />
-            <p className="text-white/60 font-medium text-xs flex items-center gap-2 tracking-wide">
+            <p className="text-white/60 font-medium text-sm flex items-center gap-2 tracking-wide">
               <Sparkles size={14} className="text-green-400" /> Pilih menu
               favoritmu, santai, dan nikmati harimu.{" "}
               <Sparkles size={14} className="text-green-400" />
@@ -264,7 +264,7 @@ export default function OrderPage() {
           </header>
 
           <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-5 rounded-3xl shadow-xl max-w-md mx-auto w-full group focus-within:border-green-400/50 focus-within:shadow-[0_0_30px_rgba(34,197,94,0.15)] transition-all duration-500">
-            <label className="text-xs font-black text-green-400 flex items-center gap-2 mb-3 uppercase tracking-widest">
+            <label className="text-sm font-black text-green-400 flex items-center gap-2 mb-3 uppercase tracking-widest">
               <UserCircle2 size={18} /> Nama Pemesan
             </label>
             <input
@@ -272,7 +272,7 @@ export default function OrderPage() {
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Contoh: Budi (Meja 4)"
-              className="w-full bg-black/40 text-white font-black px-5 py-3.5 rounded-2xl border border-white/10 focus:border-green-400 outline-none transition-all text-sm placeholder-white/20"
+              className="w-full bg-black/40 text-white font-black px-5 py-3.5 rounded-2xl border border-white/10 focus:border-green-400 outline-none transition-all text-base placeholder-white/20"
               maxLength={25}
               required
             />
@@ -286,7 +286,7 @@ export default function OrderPage() {
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`whitespace-nowrap px-6 py-3.5 rounded-2xl font-black text-xs transition-all duration-300 active:scale-95 flex items-center gap-2 border ${
+                  className={`whitespace-nowrap px-6 py-3.5 rounded-2xl font-black text-sm transition-all duration-300 active:scale-95 flex items-center gap-2 border ${
                     isActive
                       ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] -translate-y-1"
                       : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
@@ -306,7 +306,7 @@ export default function OrderPage() {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <Loader2 className="animate-spin text-green-400" size={40} />
-              <p className="text-green-400/60 text-xs font-bold uppercase tracking-widest animate-pulse">
+              <p className="text-green-400/60 text-sm font-bold uppercase tracking-widest animate-pulse">
                 Menyiapkan Menu...
               </p>
             </div>
@@ -330,17 +330,17 @@ export default function OrderPage() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#07110a] via-[#07110a]/50 to-transparent" />
                       <div className="absolute bottom-3 left-4">
-                        <p className="text-white font-black text-lg tracking-wide">
+                        <p className="text-white font-black text-xl tracking-wide">
                           {p.name}
                         </p>
-                        <p className="text-green-400 font-bold text-sm mt-0.5">
+                        <p className="text-green-400 font-bold text-base mt-0.5">
                           Rp {p.price.toLocaleString("id-ID")}
                         </p>
                       </div>
                     </div>
 
                     <div className="p-4 flex-1 flex flex-col justify-between gap-5">
-                      <p className="text-white/50 text-[11px] leading-relaxed line-clamp-2 pr-2">
+                      <p className="text-white/50 text-xs leading-relaxed line-clamp-2 pr-2">
                         {p.description}
                       </p>
 
@@ -353,7 +353,7 @@ export default function OrderPage() {
                           <Minus size={16} />
                         </button>
                         <span
-                          className={`font-black text-lg w-10 text-center transition-colors duration-200 ${qty > 0 ? "text-green-400" : "text-white"}`}
+                          className={`font-black text-xl w-10 text-center transition-colors duration-200 ${qty > 0 ? "text-green-400" : "text-white"}`}
                         >
                           {qty}
                         </span>
@@ -399,20 +399,20 @@ export default function OrderPage() {
                   </span>
                 </div>
                 <div className="text-left flex flex-col justify-center">
-                  <p className="text-green-400/80 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                  <p className="text-green-400/80 text-xs font-black uppercase tracking-widest flex items-center gap-1.5">
                     Keranjang{" "}
                     <ChevronUp
                       size={12}
                       className="group-hover:-translate-y-1 transition-transform"
                     />
                   </p>
-                  <p className="text-white font-black text-lg tracking-wide leading-tight">
+                  <p className="text-white font-black text-xl tracking-wide leading-tight">
                     Rp {totalPrice.toLocaleString("id-ID")}
                   </p>
                 </div>
               </div>
 
-              <div className="bg-green-500 text-black px-5 py-2.5 rounded-2xl text-xs font-black flex items-center shadow-[0_0_15px_rgba(34,197,94,0.3)]">
+              <div className="bg-green-500 text-black px-5 py-2.5 rounded-2xl text-sm font-black flex items-center shadow-[0_0_15px_rgba(34,197,94,0.3)]">
                 Cek Detail
               </div>
             </button>
