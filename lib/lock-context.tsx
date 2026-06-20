@@ -1,8 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "./supabase";
+import { verifyAdminPin } from "@/app/actions/security";
 import { Lock as LockIcon, Loader2, ShieldAlert } from "lucide-react";
+import { usePathname } from "next/navigation"; // Tambahan baru untuk mendeteksi URL
 
 type LockContextType = {
   isLocked: boolean;
@@ -12,16 +13,24 @@ type LockContextType = {
 const LockContext = createContext<LockContextType | undefined>(undefined);
 
 export function LockProvider({ children }: { children: React.ReactNode }) {
-  // PENTING: Pertama kali buka halaman Admin, otomatis WAJIB TERKUNCI (Gatekeeper)
+  const pathname = usePathname();
+  // Mengecek apakah pengunjung sedang berada di halaman order pelanggan
+  const isOrderPage = pathname?.startsWith("/order");
+
   const [isLocked, setIsLocked] = useState(true);
   const [inputPin, setInputPin] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState("");
 
-  // Mendeteksi status sesi saat pertama kali aplikasi dimuat
+  // 1. Logika Pengecekan Awal
   useEffect(() => {
+    // Jika ini halaman order, BEBASKAN! Jangan jalankan logika kunci.
+    if (isOrderPage) {
+      setIsLocked(false);
+      return;
+    }
+
     const checkInitialSession = () => {
-      // Memeriksa apakah perangkat ini sudah memegang tanda lulus sensor "rockopi_session"
       const session = localStorage.getItem("rockopi_admin_session");
       if (session === "authenticated") {
         setIsLocked(false);
@@ -30,22 +39,24 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
       }
     };
     checkInitialSession();
-  }, []);
+  }, [isOrderPage]);
 
-  // Sistem Auto-lock (Aplikasi otomatis mengunci jika 5 menit tidak ada aktivitas)
+  // 2. Logika Auto-Lock 5 Menit
   useEffect(() => {
+    // Matikan timer auto-lock untuk pelanggan yang sedang pesan kopi
+    if (isOrderPage) return;
+
     let timeout: NodeJS.Timeout;
     const resetTimer = () => {
       clearTimeout(timeout);
       if (!isLocked) {
         timeout = setTimeout(
           () => {
-            // Kunci layar dan hanguskan token sesi lokal jika ditinggal barista
             localStorage.removeItem("rockopi_admin_session");
             setIsLocked(true);
           },
           5 * 60 * 1000,
-        ); // 5 Menit
+        );
       }
     };
 
@@ -63,9 +74,8 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("touchstart", resetTimer);
       clearTimeout(timeout);
     };
-  }, [isLocked]);
+  }, [isLocked, isOrderPage]);
 
-  // Fungsi mengunci manual dari tombol Sidebar
   const lock = () => {
     localStorage.removeItem("rockopi_admin_session");
     setIsLocked(true);
@@ -73,7 +83,6 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     setError("");
   };
 
-  // Logika verifikasi PIN Supabase
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputPin.length !== 6) return;
@@ -82,25 +91,19 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     setError("");
 
     try {
-      const { data, error: dbError } = await supabase
-        .from("admin_settings")
-        .select("value")
-        .eq("key", "admin_pin")
-        .single();
+      // Memanggil Server Action (Sama amannya seperti Edge Function)
+      const response = await verifyAdminPin(inputPin);
 
-      if (dbError) throw dbError;
-
-      if (data && data.value === inputPin) {
-        // JIKA COCOK: Berikan stempel tanda lulus sensor di perangkat ini
+      if (response.success) {
         localStorage.setItem("rockopi_admin_session", "authenticated");
         setIsLocked(false);
         setInputPin("");
       } else {
-        setError("PIN Akses Salah. Otorisasi Ditolak!");
+        setError(response.message || "PIN Salah");
         setInputPin("");
       }
     } catch (err) {
-      setError("Gagal melakukan otentikasi keamanan server.");
+      setError("Gagal menghubungi server keamanan.");
     } finally {
       setIsVerifying(false);
     }
@@ -110,10 +113,9 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     <LockContext.Provider value={{ isLocked, lock }}>
       {children}
 
-      {/* OVERLAY LAYAR KUNCI GERBANG UTAMA (UI DARK GLASSMORPHISM FIGMA) */}
-      {isLocked && (
+      {/* 3. Tampilkan Layar Kunci HANYA jika isLocked = true DAN bukan di isOrderPage */}
+      {isLocked && !isOrderPage && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#050b07] p-4">
-          {/* Efek Ambience Glow di Background */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
 
           <div className="w-full max-w-sm flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl relative overflow-hidden text-center animate-in zoom-in-95 duration-200">
