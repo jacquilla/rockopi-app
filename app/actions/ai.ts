@@ -6,11 +6,7 @@ export async function askRockopiAI(prompt: string) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return {
-        success: false,
-        text: "Hubungi Developer
-          .",
-      };
+      return { success: false, text: "Hubungi Developer." };
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
