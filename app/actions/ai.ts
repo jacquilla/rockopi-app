@@ -1,4 +1,3 @@
-// app/actions/ai.ts
 "use server";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -9,19 +8,20 @@ export async function askRockopiAI(prompt: string) {
     if (!apiKey) {
       return {
         success: false,
-        text: "Kunci API Gemini belum dipasang di sistem.",
+        text: "Hubungi Developer
+          .",
       };
     }
 
-    // Inisialisasi AI
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Menggunakan model Flash yang super ringan dan secepat kilat
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // PERBAIKAN: Menggunakan tag "-latest" agar dikenali oleh server API Google
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash-latest",
+    });
 
-    // Kita berikan 'Karakter' atau 'Prompt Engineering' dasar agar AI tahu tugasnya
     const systemInstruction = `
-      Kamu adalah asisten pintar khusus untuk Owner "Rockopi Warehouse".
+      Kamu adalah asisten pintar khusus untuk Owner coffee-shop "Rockopi Warehouse".
       Jawablah pertanyaan dengan sangat singkat, padat, profesional, namun tetap asik.
       Jika diminta menghitung, berikan langsung angkanya.
       Gunakan bahasa Indonesia yang natural.
@@ -33,11 +33,13 @@ export async function askRockopiAI(prompt: string) {
     const responseText = result.response.text();
 
     return { success: true, text: responseText };
-  } catch (error) {
-    console.error("AI Error:", error);
+  } catch (error: any) {
+    console.error("AI Error Detail:", error.message);
+
+    // Menampilkan eror asli ke chat agar kita tahu jika ada masalah lain
     return {
       success: false,
-      text: "Maaf Bos, sirkuit saya sedang gangguan. Coba lagi nanti ya.",
+      text: `Koneksi Google gagal. Detail: ${error.message}`,
     };
   }
 }
