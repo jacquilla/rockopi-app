@@ -121,6 +121,23 @@ export default function AdminLayout({
         style={{ backgroundColor: theme.bodyBg || "#07110a" }}
       >
         {children}
+        // app/(admin)/layout.tsx (Cukup tambahkan dua baris ini di file Anda yang sudah ada)
+
+        // 1. Tambahkan baris impor ini di atas
+        import RockopiAssistant from "@/components/RockopiAssistant";
+
+        // ... kode lainnya ...
+
+              {/* 3. KONTEN */}
+              <main className="flex-1 overflow-y-auto relative pb-24 md:pb-0" style={{ backgroundColor: theme.bodyBg || '#07110a' }}>
+                {children}
+              </main>
+
+              {/* 2. Tambahkan komponen AI di sini, tepat sebelum tag penutup </div> utama */}
+              <RockopiAssistant />
+            </div>
+          );
+        }
       </main>
     </div>
   );
