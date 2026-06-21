@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useLock } from "@/lib/lock-context";
 import { useTheme } from "@/lib/theme-context";
+import RockopiAssistant from "@/components/RockopiAssistant";
 
 export default function AdminLayout({
   children,
@@ -115,30 +116,16 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* 3. KONTEN (Otomatis tertutup rapi oleh overlay LockProvider jika belum input PIN) */}
+      {/* 3. KONTEN ADMIN */}
       <main
         className="flex-1 overflow-y-auto relative pb-24 md:pb-0"
         style={{ backgroundColor: theme.bodyBg || "#07110a" }}
       >
         {children}
-        // app/(admin)/layout.tsx (Cukup tambahkan dua baris ini di file Anda yang sudah ada)
-
-        // 1. Tambahkan baris impor ini di atas
-        import RockopiAssistant from "@/components/RockopiAssistant";
-
-        // ... kode lainnya ...
-
-              {/* 3. KONTEN */}
-              <main className="flex-1 overflow-y-auto relative pb-24 md:pb-0" style={{ backgroundColor: theme.bodyBg || '#07110a' }}>
-                {children}
-              </main>
-
-              {/* 2. Tambahkan komponen AI di sini, tepat sebelum tag penutup </div> utama */}
-              <RockopiAssistant />
-            </div>
-          );
-        }
       </main>
+
+      {/* 4. ASISTEN AI (Melayang di pojok layar) */}
+      <RockopiAssistant />
     </div>
   );
 }
